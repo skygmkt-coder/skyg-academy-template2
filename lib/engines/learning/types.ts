@@ -1,0 +1,64 @@
+import type { Profile } from "@/lib/engines/auth/types";
+import type { Product, ProductWithLessons } from "@/lib/engines/catalog/types";
+
+export type EnrollmentStatus = "active" | "expired" | "revoked";
+
+export type Enrollment = {
+  id: string;
+  userId: string;
+  productId: string;
+  status: EnrollmentStatus;
+  expiresAt: string | null;
+  grantedBy: string | null;
+  grantedReason: string | null;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type LessonProgress = {
+  id: string;
+  userId: string;
+  productId: string;
+  lessonId: string;
+  isCompleted: boolean;
+  lastViewedAt: string | null;
+  completedAt: string | null;
+};
+
+export type ProductProgress = {
+  productId: string;
+  totalLessons: number;
+  completedLessons: number;
+  progressPercentage: number;
+  lastViewedLessonSlug: string | null;
+};
+
+export type StudentProductAccess = {
+  product: Product;
+  enrollment: Enrollment;
+  progress: ProductProgress;
+};
+
+export type LearningExperience = {
+  product: ProductWithLessons;
+  activeLessonSlug: string | null;
+  previousLessonSlug: string | null;
+  nextLessonSlug: string | null;
+  progress: ProductProgress;
+  completedLessonIds: string[];
+  hasAccess: boolean;
+};
+
+export type AdminEnrollment = Enrollment & {
+  student: Profile | null;
+};
+
+export type LearningActionState = {
+  status: "idle" | "success" | "error";
+  message: string;
+};
+
+export type ParsedVideo =
+  | { provider: "youtube"; embedUrl: string }
+  | { provider: "vimeo"; embedUrl: string }
+  | { provider: "external"; url: string };
