@@ -12,22 +12,29 @@ export default function CourseEditorPage() {
   const [activeTab, setActiveTab] = useState("Resumen");
 
   return (
-    <div className="p-6">
-      <h1 className="text-3xl font-bold">
-        Editor de Curso
-      </h1>
+    <main className="min-h-screen bg-gray-50 p-6">
+      <section className="mx-auto max-w-6xl">
+        <div className="mb-6 rounded-2xl bg-white p-6 shadow-sm">
+          <p className="text-sm text-gray-500">Panel de administración</p>
+          <h1 className="mt-2 text-3xl font-bold text-gray-900">
+            Editor de Curso
+          </h1>
+          <p className="mt-2 text-gray-600">
+            Administra la información, contenido, alumnos y configuración del curso.
+          </p>
+        </div>
 
-      <CourseTabs
-        activeTab={activeTab}
-        onTabChange={setActiveTab}
-      />
+        <div className="rounded-2xl bg-white p-6 shadow-sm">
+          <CourseTabs activeTab={activeTab} onTabChange={setActiveTab} />
 
-      <div className="mt-8">
-        {activeTab === "Resumen" && <CourseSummaryTab />}
-        {activeTab === "Contenido" && <CourseContentTab />}
-        {activeTab === "Participantes" && <CourseStudentsTab />}
-        {activeTab === "Ajustes" && <CourseSettingsTab />}
-      </div>
-    </div>
+          <div className="mt-8">
+            {activeTab === "Resumen" && <CourseSummaryTab />}
+            {activeTab === "Contenido" && <CourseContentTab />}
+            {activeTab === "Participantes" && <CourseStudentsTab />}
+            {activeTab === "Ajustes" && <CourseSettingsTab />}
+          </div>
+        </div>
+      </section>
+    </main>
   );
 }
