@@ -1,3 +1,9 @@
+import CourseTabs from "@/components/admin/course-editor/CourseTabs";
+import CourseSummaryTab from "@/components/admin/course-editor/CourseSummaryTab";
+import CourseContentTab from "@/components/admin/course-editor/CourseContentTab";
+import CourseStudentsTab from "@/components/admin/course-editor/CourseStudentsTab";
+import CourseSettingsTab from "@/components/admin/course-editor/CourseSettingsTab";
+
 export default function CourseEditorPage() {
   return (
     <div className="p-6">
@@ -5,11 +11,13 @@ export default function CourseEditorPage() {
         Editor de Curso
       </h1>
 
-      <div className="mt-6 flex gap-4">
-        <button>Resumen</button>
-        <button>Contenido</button>
-        <button>Participantes</button>
-        <button>Ajustes</button>
+      <CourseTabs />
+
+      <div className="mt-8 space-y-6">
+        <CourseSummaryTab />
+        <CourseContentTab />
+        <CourseStudentsTab />
+        <CourseSettingsTab />
       </div>
     </div>
   );
