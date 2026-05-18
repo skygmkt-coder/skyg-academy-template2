@@ -6,6 +6,18 @@ import type { Order, OrderStatus, Payment, PaymentMethod, PaymentStatus, Payment
 const orderColumns = "id,user_id,product_id,status,total_mxn_cents,created_at,updated_at";
 const paymentColumns = "id,order_id,method,status,proof_url,approved_by,approved_at,rejection_reason,created_at,updated_at";
 
+type PaymentApprovalRpcClient = {
+  rpc(
+    fn: "approve_manual_payment_transaction",
+    args: { p_payment_id: string; p_admin_id: string }
+  ): {
+    single(): Promise<{
+      data: { payment_id: string; order_id: string };
+      error: { message: string } | null;
+    }>;
+  };
+};
+
 function orderStatus(status: string): OrderStatus {
   return status === "paid" || status === "cancelled" ? status : "pending";
 }
@@ -60,12 +72,22 @@ export async function updateOrderStatus(orderId: string, status: OrderStatus): P
   return mapOrder(data);
 }
 
-export async function approvePayment(paymentId: string, adminId: string): Promise<Payment> {
-  const now = new Date().toISOString();
+export async function approvePaymentTransaction(input: {
+  paymentId: string;
+  adminId: string;
+}): Promise<{ paymentId: string; orderId: string }> {
   const supabase = await createClient();
-  const { data, error } = await supabase.from("payments").update({ status: "approved", approved_by: adminId, approved_at: now, rejection_reason: null }).eq("id", paymentId).eq("status", "pending_review").select(paymentColumns).single();
-  if (error) throw new Error(`Unable to approve payment: ${error.message}`);
-  return mapPayment(data);
+  const rpcClient = supabase as unknown as PaymentApprovalRpcClient;
+  const { data, error } = await rpcClient
+    .rpc("approve_manual_payment_transaction", {
+      p_payment_id: input.paymentId,
+      p_admin_id: input.adminId
+    })
+    .single();
+
+  if (error) throw new Error(`Unable to approve payment transaction: ${error.message}`);
+
+  return { paymentId: data.payment_id, orderId: data.order_id };
 }
 
 export async function rejectPayment(paymentId: string, reason: string): Promise<Payment> {
@@ -108,7 +130,7 @@ export async function getPendingReviewPaymentForProduct(input: { userId: string;
 
 export async function getRejectedPaymentForProduct(input: { userId: string; productId: string }): Promise<Payment | null> {
   const supabase = await createClient();
-  const { data, error } = await supabase.from("payments").select(`${paymentColumns}, orders!inner(user_id,product_id)`).eq("orders.user_id", input.userId).eq("orders.product_id", input.productId).eq("status", "rejected").order("created_at", { ascending: false }).limit(1).maybeSingle();
+  const { data, error } = await supabase.from("payments").select(`${paymentColumns}, orders!inner(user_id,product_id)`).eq("orders.user_id", input.UserId).eq("orders.product_id", input.productId).eq("status", "rejected").order("created_at", { ascending: false }).limit(1).maybeSingle();
   if (error) throw new Error(`Unable to load rejected payment: ${error.message}`);
   return data ? mapPayment(data) : null;
 }
