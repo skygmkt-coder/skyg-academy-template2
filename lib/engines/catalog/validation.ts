@@ -68,11 +68,48 @@ export const resourceFormSchema = z.object({
   fileUrl: z.string().trim().url("URL invalida")
 });
 
-export const signedUploadSchema = z.object({
-  intent: z.enum(["cover-image", "lesson-resource"]),
-  fileName: z.string().trim().min(1).max(180),
-  contentType: z.string().trim().min(1).max(120)
-});
+const catalogUploadRules = {
+  "cover-image": {
+    contentTypes: ["image/jpeg", "image/png", "image/webp"],
+    extensions: ["jpg", "jpeg", "png", "webp"]
+  },
+  "lesson-resource": {
+    contentTypes: ["application/pdf", "application/zip", "text/plain"],
+    extensions: ["pdf", "zip", "txt"]
+  }
+} as const;
+
+function extensionFromFileName(fileName: string): string {
+  return fileName.split(".").pop()?.toLowerCase() ?? "";
+}
+
+export const signedUploadSchema = z
+  .object({
+    intent: z.enum(["cover-image", "lesson-resource"]),
+    fileName: z.string().trim().min(1).max(180),
+    contentType: z.string().trim().min(1).max(120),
+    size: z.number().int().positive().max(50 * 1024 * 1024).optional()
+  })
+  .superRefine((value, context) => {
+    const rules = catalogUploadRules[value.intent];
+    const extension = extensionFromFileName(value.fileName);
+
+    if (!rules.contentTypes.includes(value.contentType as never)) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "Tipo de archivo no permitido.",
+        path: ["contentType"]
+      });
+    }
+
+    if (!rules.extensions.includes(extension as never)) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "Extension de archivo no permitida.",
+        path: ["fileName"]
+      });
+    }
+  });
 
 export type ProductFormInput = z.infer<typeof productFormSchema>;
 export type LessonFormInput = z.infer<typeof lessonFormSchema>;

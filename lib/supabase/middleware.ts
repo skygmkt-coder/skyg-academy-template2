@@ -2,14 +2,14 @@ import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 
 import type { Database } from "@/lib/supabase/types";
-import { getSupabaseEnv } from "@/lib/supabase/env";
+import { getSupabaseServerEnv } from "@/lib/supabase/env-server";
 
 const protectedPrefixes = ["/admin", "/mis-productos", "/aprender", "/checkout"];
 const authPrefixes = ["/login", "/registro", "/recuperar"];
 
 export async function updateSession(request: NextRequest) {
   let response = NextResponse.next({ request });
-  const { url, publishableKey } = getSupabaseEnv();
+  const { url, publishableKey } = getSupabaseServerEnv();
 
   const supabase = createServerClient<Database>(
     url,

@@ -3,6 +3,8 @@ import { NextResponse } from "next/server";
 import { createSignedCatalogUpload } from "@/lib/engines/catalog/upload-service";
 import { signedUploadSchema } from "@/lib/engines/catalog/validation";
 
+export const runtime = "nodejs";
+
 export async function POST(request: Request) {
   const body: unknown = await request.json();
   const parsed = signedUploadSchema.safeParse(body);

@@ -25,12 +25,31 @@ const paymentProofContentTypes = [
   "application/pdf"
 ] as const;
 
-export const paymentProofUploadSchema = z.object({
-  fileName: z.string().trim().min(1).max(180),
-  contentType: z.enum(paymentProofContentTypes, {
-    errorMap: () => ({ message: "Formato de comprobante no permitido" })
+const paymentProofExtensions = ["jpg", "jpeg", "png", "webp", "pdf"] as const;
+
+function extensionFromFileName(fileName: string): string {
+  return fileName.split(".").pop()?.toLowerCase() ?? "";
+}
+
+export const paymentProofUploadSchema = z
+  .object({
+    fileName: z.string().trim().min(1).max(180),
+    contentType: z.enum(paymentProofContentTypes, {
+      errorMap: () => ({ message: "Formato de comprobante no permitido" })
+    }),
+    size: z.number().int().positive().max(10 * 1024 * 1024).optional()
   })
-});
+  .superRefine((value, context) => {
+    const extension = extensionFromFileName(value.fileName);
+
+    if (!paymentProofExtensions.includes(extension as never)) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "Extension de comprobante no permitida",
+        path: ["fileName"]
+      });
+    }
+  });
 
 export type SubmitManualPaymentInput = z.infer<typeof submitManualPaymentSchema>;
 export type ApprovePaymentInput = z.infer<typeof approvePaymentSchema>;
