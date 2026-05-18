@@ -4,6 +4,8 @@ import { requireUser } from "@/lib/engines/auth/helpers";
 import { createSignedPaymentProofUpload } from "@/lib/engines/commerce/service";
 import { paymentProofUploadSchema } from "@/lib/engines/commerce/validation";
 
+export const runtime = "nodejs";
+
 export async function POST(request: Request) {
   const auth = await requireUser();
   const body: unknown = await request.json();
