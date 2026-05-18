@@ -130,7 +130,7 @@ export async function getPendingReviewPaymentForProduct(input: { userId: string;
 
 export async function getRejectedPaymentForProduct(input: { userId: string; productId: string }): Promise<Payment | null> {
   const supabase = await createClient();
-  const { data, error } = await supabase.from("payments").select(`${paymentColumns}, orders!inner(user_id,product_id)`).eq("orders.user_id", input.UserId).eq("orders.product_id", input.productId).eq("status", "rejected").order("created_at", { ascending: false }).limit(1).maybeSingle();
+  const { data, error } = await supabase.from("payments").select(`${paymentColumns}, orders!inner(user_id,product_id)`).eq("orders.user_id", input.userId).eq("orders.product_id", input.productId).eq("status", "rejected").order("created_at", { ascending: false }).limit(1).maybeSingle();
   if (error) throw new Error(`Unable to load rejected payment: ${error.message}`);
   return data ? mapPayment(data) : null;
 }
