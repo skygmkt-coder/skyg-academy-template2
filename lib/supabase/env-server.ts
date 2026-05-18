@@ -3,7 +3,7 @@ const requiredPublicEnv = [
   "NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY"
 ] as const;
 
-export function getSupabaseEnv(): {
+export function getSupabaseServerEnv(): {
   url: string;
   publishableKey: string;
 } {

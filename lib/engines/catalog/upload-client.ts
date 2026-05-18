@@ -15,7 +15,8 @@ export async function uploadCatalogAsset(input: {
     body: JSON.stringify({
       intent: input.intent,
       fileName: input.file.name,
-      contentType: input.file.type
+      contentType: input.file.type,
+      size: input.file.size
     })
   });
 

@@ -6,7 +6,7 @@ export async function uploadPaymentProof(file: File): Promise<string> {
   const response = await fetch("/api/uploads/payment-proof", {
     method: "POST",
     headers: { "content-type": "application/json" },
-    body: JSON.stringify({ fileName: file.name, contentType: file.type })
+    body: JSON.stringify({ fileName: file.name, contentType: file.type, size: file.size })
   });
 
   if (!response.ok) throw new Error("No pudimos preparar la carga del comprobante.");

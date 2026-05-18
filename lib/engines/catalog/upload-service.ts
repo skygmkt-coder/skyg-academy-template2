@@ -6,6 +6,15 @@ import type { SignedUploadInput } from "@/lib/engines/catalog/validation";
 
 const bucket = "catalog-assets";
 
+const extensionByContentType: Record<string, string> = {
+  "image/jpeg": "jpg",
+  "image/png": "png",
+  "image/webp": "webp",
+  "application/pdf": "pdf",
+  "application/zip": "zip",
+  "text/plain": "txt"
+};
+
 export async function createSignedCatalogUpload(input: SignedUploadInput): Promise<{
   bucket: string;
   path: string;
@@ -16,7 +25,12 @@ export async function createSignedCatalogUpload(input: SignedUploadInput): Promi
   await requireAdmin();
 
   const supabase = await createClient();
-  const extension = input.fileName.split(".").pop()?.toLowerCase() ?? "bin";
+  const extension = extensionByContentType[input.contentType];
+
+  if (!extension) {
+    throw new Error("Tipo de archivo no permitido.");
+  }
+
   const folder = input.intent === "cover-image" ? "covers" : "resources";
   const path = `${folder}/${crypto.randomUUID()}.${extension}`;
 
