@@ -4,24 +4,28 @@ import { createClient } from "@/lib/supabase/server";
 import { getProfileById } from "@/lib/engines/auth/repository";
 import type { AuthenticatedUser, Profile } from "@/lib/engines/auth/types";
 
-export async function requireUser(): Promise<AuthenticatedUser> {
+export async function getOptionalUser(): Promise<AuthenticatedUser | null> {
   const supabase = await createClient();
   const {
-    data: { user },
-    error
+    data: { user }
   } = await supabase.auth.getUser();
 
-  if (error || !user) {
-    redirect("/login");
+  if (!user) {
+    return null;
   }
 
   const profile = await getProfileById(user.id);
+  return profile ? { user, profile } : null;
+}
 
-  if (!profile) {
+export async function requireUser(): Promise<AuthenticatedUser> {
+  const auth = await getOptionalUser();
+
+  if (!auth) {
     redirect("/login");
   }
 
-  return { user, profile };
+  return auth;
 }
 
 export async function requireAdmin(): Promise<AuthenticatedUser> {
