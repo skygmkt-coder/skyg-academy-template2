@@ -5,6 +5,7 @@ import { redirect } from "next/navigation";
 
 import { requireAdmin, requireUser } from "@/lib/engines/auth/helpers";
 import { completeCoursePlayerLesson } from "@/lib/engines/learning/course-player";
+import { canManageCourseEnrollment, enrollUserToCourse, revokeCourseAccess } from "@/lib/engines/learning/enrollments";
 import {
   completeLesson,
   grantManualEnrollment,
@@ -14,7 +15,9 @@ import type { LearningActionState } from "@/lib/engines/learning/types";
 import {
   completeCoursePlayerLessonSchema,
   completeLessonSchema,
+  enrollUserToCourseSchema,
   grantEnrollmentSchema,
+  revokeCourseAccessSchema,
   revokeEnrollmentSchema
 } from "@/lib/engines/learning/validation";
 
@@ -114,4 +117,57 @@ export async function completeCoursePlayerLessonAction(formData: FormData): Prom
   revalidatePath("/mis-productos");
   revalidatePath(`/learn/${parsed.data.courseId}`);
   redirect(`/learn/${parsed.data.courseId}?lesson=${parsed.data.lessonId}`);
+}
+
+export async function enrollUserToCourseAction(formData: FormData): Promise<void> {
+  const auth = await requireUser();
+  const parsed = enrollUserToCourseSchema.safeParse({
+    courseId: stringFromForm(formData, "courseId"),
+    userId: stringFromForm(formData, "userId"),
+    expiresAt: stringFromForm(formData, "expiresAt"),
+    paymentProvider: stringFromForm(formData, "paymentProvider"),
+    paymentReference: stringFromForm(formData, "paymentReference")
+  });
+
+  if (!parsed.success) {
+    throw new Error(parsed.error.errors[0]?.message ?? "Enrollment invalido.");
+  }
+
+  if (!(await canManageCourseEnrollment(auth, parsed.data.courseId))) {
+    throw new Error("No tienes permisos para administrar alumnos de este curso.");
+  }
+
+  await enrollUserToCourse({
+    courseId: parsed.data.courseId,
+    userId: parsed.data.userId,
+    enrolledBy: auth.user.id,
+    expiresAt: parsed.data.expiresAt,
+    paymentProvider: parsed.data.paymentProvider,
+    paymentReference: parsed.data.paymentReference
+  });
+
+  revalidatePath(`/admin/cursos/${parsed.data.courseId}`);
+  revalidatePath(`/learn/${parsed.data.courseId}`);
+  revalidatePath("/mis-productos");
+}
+
+export async function revokeCourseAccessAction(formData: FormData): Promise<void> {
+  const auth = await requireUser();
+  const parsed = revokeCourseAccessSchema.safeParse({
+    courseId: stringFromForm(formData, "courseId"),
+    enrollmentId: stringFromForm(formData, "enrollmentId")
+  });
+
+  if (!parsed.success) {
+    throw new Error("Enrollment invalido.");
+  }
+
+  if (!(await canManageCourseEnrollment(auth, parsed.data.courseId))) {
+    throw new Error("No tienes permisos para revocar acceso de este curso.");
+  }
+
+  await revokeCourseAccess(parsed.data);
+  revalidatePath(`/admin/cursos/${parsed.data.courseId}`);
+  revalidatePath(`/learn/${parsed.data.courseId}`);
+  revalidatePath("/mis-productos");
 }

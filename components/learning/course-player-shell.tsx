@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { BookOpen, CheckCircle2, ChevronLeft, ChevronRight, Circle, Download, FileText, Menu, PlayCircle } from "lucide-react";
+import { BookOpen, CheckCircle2, ChevronLeft, ChevronRight, Circle, Download, FileText, Lock, Menu, PlayCircle } from "lucide-react";
 
 import { completeCoursePlayerLessonAction } from "@/lib/engines/learning/actions";
 import type { CoursePlayerExperience, CoursePlayerLesson } from "@/lib/engines/learning/types";
@@ -21,6 +21,31 @@ function formatDuration(minutes: number | null): string {
 
 export function CoursePlayerShell({ experience }: CoursePlayerShellProps) {
   const activeLesson = experience.activeLesson;
+
+  if (!experience.hasAccess) {
+    return (
+      <section className="rounded-lg border border-slate-200 bg-white p-8">
+        <div className="mx-auto flex max-w-2xl flex-col items-center text-center">
+          <span className="flex h-12 w-12 items-center justify-center rounded-md bg-brand-primary/10 text-brand-primary">
+            <Lock aria-hidden className="h-6 w-6" />
+          </span>
+          <p className="mt-5 text-sm font-medium uppercase tracking-normal text-brand-primary">Acceso requerido</p>
+          <h1 className="mt-2 text-2xl font-semibold text-slate-950">{experience.course.title}</h1>
+          <p className="mt-3 text-sm leading-6 text-slate-600">
+            Este curso requiere enrollment activo. Si ya realizaste tu pago o recibiste acceso manual, vuelve a intentarlo despues de que tu acceso sea aprobado.
+          </p>
+          <div className="mt-6 flex flex-col gap-3 sm:flex-row">
+            <Link href="/mis-productos" className="inline-flex min-h-11 items-center justify-center rounded-md bg-brand-primary px-4 py-2 text-sm font-semibold text-white">
+              Ir a mis productos
+            </Link>
+            <Link href={`/checkout/${experience.course.slug}`} className="inline-flex min-h-11 items-center justify-center rounded-md border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-800">
+              Solicitar acceso
+            </Link>
+          </div>
+        </div>
+      </section>
+    );
+  }
 
   return (
     <section className="min-h-[calc(100vh-8rem)] overflow-hidden rounded-lg border border-slate-200 bg-white">

@@ -1,18 +1,26 @@
 import { notFound } from "next/navigation";
 
+import { CourseEnrollmentsPanel } from "@/components/admin/course-enrollments-panel";
 import CourseContentTab from "@/components/admin/course-editor/CourseContentTab";
 import { getCourseContent } from "@/lib/courses/repository";
+import { listStudentProfiles } from "@/lib/engines/auth/repository";
 import { requireUser } from "@/lib/engines/auth/helpers";
+import { listCourseEnrollments } from "@/lib/engines/learning/enrollments";
 
 export default async function AdminCourseEditorPage({ params }: { params: Promise<{ id: string }> }) {
   const auth = await requireUser();
   const { id } = await params;
-  const course = await getCourseContent(id, auth.user.id);
+  const ownerId = auth.profile.role === "admin" ? undefined : auth.user.id;
+  const course = await getCourseContent(id, ownerId);
 
   if (!course) {
     notFound();
   }
 
+  const [enrollments, students] = await Promise.all([
+    listCourseEnrollments(course.id),
+    listStudentProfiles()
+  ]);
   const lessonCount = course.modules.reduce((total, module) => total + module.lessons.length, 0);
 
   return (
@@ -27,6 +35,7 @@ export default async function AdminCourseEditorPage({ params }: { params: Promis
         </div>
       </div>
       <CourseContentTab courseId={course.id} />
+      <CourseEnrollmentsPanel courseId={course.id} students={students} enrollments={enrollments} />
     </section>
   );
 }
