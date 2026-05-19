@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 
+import { updateCourseStorefrontSettings } from "@/lib/courses/storefront";
 import { requireAdmin, requireUser } from "@/lib/engines/auth/helpers";
 import { completeCoursePlayerLesson } from "@/lib/engines/learning/course-player";
 import { canManageCourseEnrollment, enrollUserToCourse, revokeCourseAccess } from "@/lib/engines/learning/enrollments";
@@ -29,7 +30,8 @@ import {
   revokeCourseAccessSchema,
   revokeEnrollmentSchema,
   submitCoursePaymentProofSchema,
-  updateCoursePaymentSettingsSchema
+  updateCoursePaymentSettingsSchema,
+  updateCourseStorefrontSettingsSchema
 } from "@/lib/engines/learning/validation";
 
 const successState = (message: string): LearningActionState => ({ status: "success", message });
@@ -38,6 +40,10 @@ const errorState = (message: string): LearningActionState => ({ status: "error",
 function stringFromForm(formData: FormData, key: string): string {
   const value = formData.get(key);
   return typeof value === "string" ? value : "";
+}
+
+function booleanFromForm(formData: FormData, key: string): boolean {
+  return formData.get(key) === "on";
 }
 
 export async function grantEnrollmentAction(
@@ -202,6 +208,26 @@ export async function updateCoursePaymentSettingsAction(formData: FormData): Pro
   await updateCoursePaymentSettings(auth, parsed.data);
   revalidatePath(`/admin/cursos/${parsed.data.courseId}`);
   revalidatePath(`/learn/${parsed.data.courseId}`);
+  revalidatePath("/cursos");
+}
+
+export async function updateCourseStorefrontSettingsAction(formData: FormData): Promise<void> {
+  const auth = await requireUser();
+  const parsed = updateCourseStorefrontSettingsSchema.safeParse({
+    courseId: stringFromForm(formData, "courseId"),
+    showOnLanding: booleanFromForm(formData, "showOnLanding"),
+    shortDescription: stringFromForm(formData, "shortDescription"),
+    thumbnailUrl: stringFromForm(formData, "thumbnailUrl"),
+    instructorName: stringFromForm(formData, "instructorName")
+  });
+
+  if (!parsed.success) {
+    throw new Error(parsed.error.errors[0]?.message ?? "Storefront invalido.");
+  }
+
+  await updateCourseStorefrontSettings(auth, parsed.data);
+  revalidatePath(`/admin/cursos/${parsed.data.courseId}`);
+  revalidatePath("/cursos");
 }
 
 export async function submitCoursePaymentProofAction(formData: FormData): Promise<LearningActionState> {
@@ -224,6 +250,7 @@ export async function submitCoursePaymentProofAction(formData: FormData): Promis
 
   revalidatePath(`/learn/${parsed.data.courseId}`);
   revalidatePath(`/admin/cursos/${parsed.data.courseId}`);
+  revalidatePath("/cursos");
   return successState("Comprobante enviado. Revisaremos tu acceso pronto.");
 }
 
@@ -242,6 +269,7 @@ export async function approveCoursePaymentProofAction(formData: FormData): Promi
   revalidatePath(`/admin/cursos/${parsed.data.courseId}`);
   revalidatePath(`/learn/${parsed.data.courseId}`);
   revalidatePath("/mis-productos");
+  revalidatePath("/cursos");
 }
 
 export async function rejectCoursePaymentProofAction(formData: FormData): Promise<void> {
@@ -258,6 +286,7 @@ export async function rejectCoursePaymentProofAction(formData: FormData): Promis
   await rejectCoursePaymentProof({ auth, ...parsed.data });
   revalidatePath(`/admin/cursos/${parsed.data.courseId}`);
   revalidatePath(`/learn/${parsed.data.courseId}`);
+  revalidatePath("/cursos");
 }
 
 export async function enrollFreeCourseAction(formData: FormData): Promise<void> {
@@ -271,5 +300,6 @@ export async function enrollFreeCourseAction(formData: FormData): Promise<void> 
   await enrollFreeCourse(auth, parsed.data.courseId);
   revalidatePath(`/learn/${parsed.data.courseId}`);
   revalidatePath("/mis-productos");
+  revalidatePath("/cursos");
   redirect(`/learn/${parsed.data.courseId}`);
 }

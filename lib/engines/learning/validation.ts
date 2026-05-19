@@ -71,6 +71,14 @@ export const updateCoursePaymentSettingsSchema = z.object({
   paymentNotes: optionalTrimmed(1000, "Las notas son demasiado largas")
 });
 
+export const updateCourseStorefrontSettingsSchema = z.object({
+  courseId: z.string().uuid(),
+  showOnLanding: z.boolean(),
+  shortDescription: optionalTrimmed(280, "La descripcion corta es demasiado larga"),
+  thumbnailUrl: optionalTrimmed(500, "La URL de thumbnail es demasiado larga"),
+  instructorName: optionalTrimmed(160, "El instructor es demasiado largo")
+});
+
 export const submitCoursePaymentProofSchema = z.object({
   courseId: z.string().uuid(),
   imageUrl: z.string().trim().min(1, "Sube un comprobante."),
@@ -93,6 +101,7 @@ export type CompleteCoursePlayerLessonInput = z.infer<typeof completeCoursePlaye
 export type EnrollUserToCourseInput = z.infer<typeof enrollUserToCourseSchema>;
 export type RevokeCourseAccessInput = z.infer<typeof revokeCourseAccessSchema>;
 export type UpdateCoursePaymentSettingsInput = z.infer<typeof updateCoursePaymentSettingsSchema>;
+export type UpdateCourseStorefrontSettingsInput = z.infer<typeof updateCourseStorefrontSettingsSchema>;
 export type SubmitCoursePaymentProofInput = z.infer<typeof submitCoursePaymentProofSchema>;
 export type ReviewCoursePaymentProofInput = z.infer<typeof reviewCoursePaymentProofSchema>;
 export type EnrollFreeCourseInput = z.infer<typeof enrollFreeCourseSchema>;
