@@ -5,8 +5,11 @@ import { useEffect, useMemo, useState, useTransition } from "react";
 import {
   createLessonAction,
   createModuleAction,
+  deleteLessonAction,
+  deleteModuleAction,
   getCourseContentAction,
-  updateLessonTitleAction
+  updateLessonTitleAction,
+  updateModuleTitleAction
 } from "@/lib/courses/actions";
 import type { CourseContent, ModuleWithLessons } from "@/lib/courses/types";
 
@@ -17,6 +20,7 @@ type CourseContentTabProps = {
 export default function CourseContentTab({ courseId }: CourseContentTabProps) {
   const [course, setCourse] = useState<CourseContent | null>(null);
   const [selectedModuleId, setSelectedModuleId] = useState<string | null>(null);
+  const [moduleTitle, setModuleTitle] = useState("");
   const [message, setMessage] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
 
@@ -44,6 +48,10 @@ export default function CourseContentTab({ courseId }: CourseContentTabProps) {
     return course?.modules.find((module) => module.id === selectedModuleId) ?? course?.modules[0] ?? null;
   }, [course, selectedModuleId]);
 
+  useEffect(() => {
+    setModuleTitle(selectedModule?.title ?? "");
+  }, [selectedModule?.title]);
+
   function refreshWith(action: () => Promise<CourseContent | null>, successMessage: string) {
     setMessage(null);
     startTransition(async () => {
@@ -70,6 +78,25 @@ export default function CourseContentTab({ courseId }: CourseContentTabProps) {
     refreshWith(() => createModuleAction(formData), "Modulo creado.");
   }
 
+  function handleUpdateModuleTitle() {
+    if (!course || !selectedModule) return;
+
+    const formData = new FormData();
+    formData.set("courseId", course.id);
+    formData.set("moduleId", selectedModule.id);
+    formData.set("title", moduleTitle);
+    refreshWith(() => updateModuleTitleAction(formData), "Modulo actualizado.");
+  }
+
+  function handleDeleteModule() {
+    if (!course || !selectedModule) return;
+
+    const formData = new FormData();
+    formData.set("courseId", course.id);
+    formData.set("moduleId", selectedModule.id);
+    refreshWith(() => deleteModuleAction(formData), "Modulo eliminado.");
+  }
+
   function handleCreateLesson() {
     if (!course || !selectedModule) return;
 
@@ -88,6 +115,15 @@ export default function CourseContentTab({ courseId }: CourseContentTabProps) {
     formData.set("lessonId", lessonId);
     formData.set("title", title);
     refreshWith(() => updateLessonTitleAction(formData), "Titulo actualizado.");
+  }
+
+  function handleDeleteLesson(lessonId: string) {
+    if (!course) return;
+
+    const formData = new FormData();
+    formData.set("courseId", course.id);
+    formData.set("lessonId", lessonId);
+    refreshWith(() => deleteLessonAction(formData), "Leccion eliminada.");
   }
 
   if (!course && isPending) {
@@ -163,11 +199,38 @@ export default function CourseContentTab({ courseId }: CourseContentTabProps) {
       </aside>
 
       <section className="rounded-2xl border border-gray-200 bg-white p-6">
-        <div className="flex items-center justify-between gap-4">
-          <div>
-            <h2 className="text-2xl font-bold text-gray-900">
-              {selectedModule?.title ?? "Contenido del curso"}
-            </h2>
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+          <div className="min-w-0 flex-1">
+            {selectedModule ? (
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+                <input
+                  className="min-w-0 flex-1 rounded-xl border border-gray-200 px-3 py-2 text-2xl font-bold text-gray-900 outline-none focus:border-gray-400"
+                  disabled={isPending}
+                  onChange={(event) => setModuleTitle(event.target.value)}
+                  value={moduleTitle}
+                />
+                <div className="flex gap-2">
+                  <button
+                    className="rounded-xl border border-gray-200 px-4 py-2 text-sm hover:bg-gray-50 disabled:opacity-50"
+                    disabled={isPending || moduleTitle.trim() === selectedModule.title || moduleTitle.trim().length < 2}
+                    onClick={handleUpdateModuleTitle}
+                    type="button"
+                  >
+                    Guardar
+                  </button>
+                  <button
+                    className="rounded-xl border border-red-200 px-4 py-2 text-sm text-red-600 hover:bg-red-50 disabled:opacity-50"
+                    disabled={isPending}
+                    onClick={handleDeleteModule}
+                    type="button"
+                  >
+                    Eliminar
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <h2 className="text-2xl font-bold text-gray-900">Contenido del curso</h2>
+            )}
 
             <p className="mt-1 text-gray-500">
               Administra las lecciones del modulo.
@@ -201,6 +264,7 @@ export default function CourseContentTab({ courseId }: CourseContentTabProps) {
                 key={lesson.id}
                 disabled={isPending}
                 lesson={lesson}
+                onDelete={handleDeleteLesson}
                 onUpdateTitle={handleUpdateLessonTitle}
               />
             ))
@@ -214,10 +278,12 @@ export default function CourseContentTab({ courseId }: CourseContentTabProps) {
 function LessonCard({
   disabled,
   lesson,
+  onDelete,
   onUpdateTitle
 }: {
   disabled: boolean;
   lesson: ModuleWithLessons["lessons"][number];
+  onDelete: (lessonId: string) => void;
   onUpdateTitle: (lessonId: string, title: string) => void;
 }) {
   const [title, setTitle] = useState(lesson.title);
@@ -253,14 +319,24 @@ function LessonCard({
         </div>
       </div>
 
-      <button
-        className="rounded-xl border border-gray-200 px-4 py-2 text-sm hover:bg-gray-50 disabled:opacity-50"
-        disabled={disabled || title.trim() === lesson.title || title.trim().length < 2}
-        onClick={() => onUpdateTitle(lesson.id, title)}
-        type="button"
-      >
-        Guardar
-      </button>
+      <div className="flex gap-2">
+        <button
+          className="rounded-xl border border-gray-200 px-4 py-2 text-sm hover:bg-gray-50 disabled:opacity-50"
+          disabled={disabled || title.trim() === lesson.title || title.trim().length < 2}
+          onClick={() => onUpdateTitle(lesson.id, title)}
+          type="button"
+        >
+          Guardar
+        </button>
+        <button
+          className="rounded-xl border border-red-200 px-4 py-2 text-sm text-red-600 hover:bg-red-50 disabled:opacity-50"
+          disabled={disabled}
+          onClick={() => onDelete(lesson.id)}
+          type="button"
+        >
+          Eliminar
+        </button>
+      </div>
     </div>
   );
 }
