@@ -23,6 +23,9 @@ export function AppShell({ brand, profile, children }: AppShellProps) {
                 <Link className="font-medium text-slate-700 hover:text-brand-primary" href="/admin">
                   Admin
                 </Link>
+                <Link className="font-medium text-slate-700 hover:text-brand-primary" href="/admin/cursos">
+                  Cursos
+                </Link>
                 <Link className="font-medium text-slate-700 hover:text-brand-primary" href="/admin/productos">
                   Productos
                 </Link>

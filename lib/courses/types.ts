@@ -10,6 +10,11 @@ export type Course = {
   updatedAt: string;
 };
 
+export type AdminCourseSummary = Course & {
+  moduleCount: number;
+  lessonCount: number;
+};
+
 export type Module = {
   id: string;
   courseId: string;

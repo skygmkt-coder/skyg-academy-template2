@@ -71,6 +71,7 @@ export type Database = {
       products: {
         Row: {
           id: string;
+          creator_id: string | null;
           title: string;
           slug: string;
           type: string;
@@ -84,6 +85,7 @@ export type Database = {
         };
         Insert: {
           id?: string;
+          creator_id?: string | null;
           title: string;
           slug: string;
           type: string;
@@ -97,6 +99,7 @@ export type Database = {
         };
         Update: {
           id?: string;
+          creator_id?: string | null;
           title?: string;
           slug?: string;
           type?: string;
@@ -465,6 +468,7 @@ export type Database = {
       courses: {
         Row: {
           id: string;
+          creator_id: string | null;
           title: string;
           slug: string;
           description: string | null;
