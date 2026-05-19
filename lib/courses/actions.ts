@@ -2,8 +2,9 @@
 
 import { revalidatePath } from "next/cache";
 
-import { requireAdmin } from "@/lib/engines/auth/helpers";
+import { requireUser } from "@/lib/engines/auth/helpers";
 import { stringFromForm } from "@/lib/courses/helpers";
+import { assertCourseOwner } from "@/lib/courses/ownership";
 import {
   createLesson,
   createModule,
@@ -18,12 +19,12 @@ import type { CourseContent } from "@/lib/courses/types";
 const courseEditorPath = "/admin/cursos/id";
 
 export async function getCourseContentAction(courseId?: string): Promise<CourseContent | null> {
-  await requireAdmin();
-  return getCourseContent(courseId);
+  const auth = await requireUser();
+  return getCourseContent(courseId, auth.user.id);
 }
 
 export async function createModuleAction(formData: FormData): Promise<CourseContent | null> {
-  await requireAdmin();
+  const auth = await requireUser();
   const courseId = stringFromForm(formData, "courseId");
   const title = stringFromForm(formData, "title").trim();
 
@@ -31,13 +32,14 @@ export async function createModuleAction(formData: FormData): Promise<CourseCont
     throw new Error("Datos de modulo invalidos.");
   }
 
+  await assertCourseOwner(courseId, auth.user.id);
   await createModule({ courseId, title });
   revalidatePath(courseEditorPath);
-  return getCourseContent(courseId);
+  return getCourseContent(courseId, auth.user.id);
 }
 
 export async function updateModuleTitleAction(formData: FormData): Promise<CourseContent | null> {
-  await requireAdmin();
+  const auth = await requireUser();
   const courseId = stringFromForm(formData, "courseId");
   const moduleId = stringFromForm(formData, "moduleId");
   const title = stringFromForm(formData, "title").trim();
@@ -46,13 +48,14 @@ export async function updateModuleTitleAction(formData: FormData): Promise<Cours
     throw new Error("Titulo de modulo invalido.");
   }
 
+  await assertCourseOwner(courseId, auth.user.id);
   await updateModuleTitle({ courseId, moduleId, title });
   revalidatePath(courseEditorPath);
-  return getCourseContent(courseId);
+  return getCourseContent(courseId, auth.user.id);
 }
 
 export async function deleteModuleAction(formData: FormData): Promise<CourseContent | null> {
-  await requireAdmin();
+  const auth = await requireUser();
   const courseId = stringFromForm(formData, "courseId");
   const moduleId = stringFromForm(formData, "moduleId");
 
@@ -60,13 +63,14 @@ export async function deleteModuleAction(formData: FormData): Promise<CourseCont
     throw new Error("Modulo invalido.");
   }
 
+  await assertCourseOwner(courseId, auth.user.id);
   await deleteModule({ courseId, moduleId });
   revalidatePath(courseEditorPath);
-  return getCourseContent(courseId);
+  return getCourseContent(courseId, auth.user.id);
 }
 
 export async function createLessonAction(formData: FormData): Promise<CourseContent | null> {
-  await requireAdmin();
+  const auth = await requireUser();
   const courseId = stringFromForm(formData, "courseId");
   const moduleId = stringFromForm(formData, "moduleId");
   const title = stringFromForm(formData, "title").trim();
@@ -75,13 +79,14 @@ export async function createLessonAction(formData: FormData): Promise<CourseCont
     throw new Error("Datos de leccion invalidos.");
   }
 
+  await assertCourseOwner(courseId, auth.user.id);
   await createLesson({ courseId, moduleId, title });
   revalidatePath(courseEditorPath);
-  return getCourseContent(courseId);
+  return getCourseContent(courseId, auth.user.id);
 }
 
 export async function updateLessonTitleAction(formData: FormData): Promise<CourseContent | null> {
-  await requireAdmin();
+  const auth = await requireUser();
   const courseId = stringFromForm(formData, "courseId");
   const lessonId = stringFromForm(formData, "lessonId");
   const title = stringFromForm(formData, "title").trim();
@@ -90,13 +95,14 @@ export async function updateLessonTitleAction(formData: FormData): Promise<Cours
     throw new Error("Titulo de leccion invalido.");
   }
 
+  await assertCourseOwner(courseId, auth.user.id);
   await updateLessonTitle({ courseId, lessonId, title });
   revalidatePath(courseEditorPath);
-  return getCourseContent(courseId);
+  return getCourseContent(courseId, auth.user.id);
 }
 
 export async function deleteLessonAction(formData: FormData): Promise<CourseContent | null> {
-  await requireAdmin();
+  const auth = await requireUser();
   const courseId = stringFromForm(formData, "courseId");
   const lessonId = stringFromForm(formData, "lessonId");
 
@@ -104,7 +110,8 @@ export async function deleteLessonAction(formData: FormData): Promise<CourseCont
     throw new Error("Leccion invalida.");
   }
 
+  await assertCourseOwner(courseId, auth.user.id);
   await deleteLesson({ courseId, lessonId });
   revalidatePath(courseEditorPath);
-  return getCourseContent(courseId);
+  return getCourseContent(courseId, auth.user.id);
 }
