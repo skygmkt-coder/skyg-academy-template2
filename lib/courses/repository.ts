@@ -111,7 +111,7 @@ export async function getCourseContent(courseId?: string, ownerId?: string): Pro
     return null;
   }
 
-  const course = mapCourse(courseRow);
+  const course = mapCourse(courseRow as CourseRow);
   const [modules, lessons] = await Promise.all([
     listModules(course.id),
     listLessons(course.id)
