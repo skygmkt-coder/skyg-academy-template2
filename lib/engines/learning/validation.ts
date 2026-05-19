@@ -30,6 +30,12 @@ export const completeLessonSchema = z.object({
   lessonId: z.string().uuid()
 });
 
+export const completeCoursePlayerLessonSchema = z.object({
+  courseId: z.string().uuid(),
+  lessonId: z.string().uuid()
+});
+
 export type GrantEnrollmentInput = z.infer<typeof grantEnrollmentSchema>;
 export type RevokeEnrollmentInput = z.infer<typeof revokeEnrollmentSchema>;
 export type CompleteLessonInput = z.infer<typeof completeLessonSchema>;
+export type CompleteCoursePlayerLessonInput = z.infer<typeof completeCoursePlayerLessonSchema>;

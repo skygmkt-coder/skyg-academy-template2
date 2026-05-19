@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 
 import { requireAdmin, requireUser } from "@/lib/engines/auth/helpers";
+import { completeCoursePlayerLesson } from "@/lib/engines/learning/course-player";
 import {
   completeLesson,
   grantManualEnrollment,
@@ -11,6 +12,7 @@ import {
 } from "@/lib/engines/learning/service";
 import type { LearningActionState } from "@/lib/engines/learning/types";
 import {
+  completeCoursePlayerLessonSchema,
   completeLessonSchema,
   grantEnrollmentSchema,
   revokeEnrollmentSchema
@@ -90,4 +92,26 @@ export async function completeLessonAction(formData: FormData): Promise<void> {
   revalidatePath(`/aprender/${parsed.data.productSlug}`);
   revalidatePath(`/aprender/${parsed.data.productSlug}/${parsed.data.lessonSlug}`);
   redirect(`/aprender/${parsed.data.productSlug}/${parsed.data.lessonSlug}`);
+}
+
+export async function completeCoursePlayerLessonAction(formData: FormData): Promise<void> {
+  const auth = await requireUser();
+  const parsed = completeCoursePlayerLessonSchema.safeParse({
+    courseId: stringFromForm(formData, "courseId"),
+    lessonId: stringFromForm(formData, "lessonId")
+  });
+
+  if (!parsed.success) {
+    throw new Error("Leccion invalida.");
+  }
+
+  await completeCoursePlayerLesson({
+    auth,
+    courseId: parsed.data.courseId,
+    lessonId: parsed.data.lessonId
+  });
+
+  revalidatePath("/mis-productos");
+  revalidatePath(`/learn/${parsed.data.courseId}`);
+  redirect(`/learn/${parsed.data.courseId}?lesson=${parsed.data.lessonId}`);
 }
