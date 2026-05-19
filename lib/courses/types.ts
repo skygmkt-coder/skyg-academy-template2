@@ -1,5 +1,6 @@
 export type Course = {
   id: string;
+  creatorId: string | null;
   title: string;
   slug: string;
   description: string | null;

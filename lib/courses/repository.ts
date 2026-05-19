@@ -4,6 +4,7 @@ import type { Course, CourseContent, Lesson, Module } from "@/lib/courses/types"
 
 type CourseRow = {
   id: string;
+  creator_id: string | null;
   title: string;
   slug: string;
   description: string | null;
@@ -40,7 +41,7 @@ type LessonRow = {
   updated_at: string;
 };
 
-const courseColumns = "id,title,slug,description,cover_image_url,is_published,created_at,updated_at";
+const courseColumns = "id,creator_id,title,slug,description,cover_image_url,is_published,created_at,updated_at";
 const moduleColumns = "id,course_id,title,description,display_order,created_at,updated_at";
 const lessonColumns =
   "id,product_id,module_id,title,slug,description,video_url,display_order,is_preview,lesson_type,duration_minutes,status,created_at,updated_at";
@@ -48,6 +49,7 @@ const lessonColumns =
 function mapCourse(row: CourseRow): Course {
   return {
     id: row.id,
+    creatorId: row.creator_id,
     title: row.title,
     slug: row.slug,
     description: row.description,
@@ -89,9 +91,14 @@ function mapLesson(row: LessonRow): Lesson {
   };
 }
 
-export async function getCourseContent(courseId?: string): Promise<CourseContent | null> {
+export async function getCourseContent(courseId?: string, ownerId?: string): Promise<CourseContent | null> {
   const supabase = await createClient();
-  const courseQuery = supabase.from("courses").select(courseColumns);
+  let courseQuery = supabase.from("courses").select(courseColumns);
+
+  if (ownerId) {
+    courseQuery = courseQuery.eq("creator_id", ownerId);
+  }
+
   const { data: courseRow, error: courseError } = courseId
     ? await courseQuery.eq("id", courseId).maybeSingle()
     : await courseQuery.order("created_at", { ascending: false }).limit(1).maybeSingle();
@@ -104,7 +111,7 @@ export async function getCourseContent(courseId?: string): Promise<CourseContent
     return null;
   }
 
-  const course = mapCourse(courseRow);
+  const course = mapCourse(courseRow as CourseRow);
   const [modules, lessons] = await Promise.all([
     listModules(course.id),
     listLessons(course.id)
