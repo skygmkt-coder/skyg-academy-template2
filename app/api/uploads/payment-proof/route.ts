@@ -8,8 +8,9 @@ import { readJsonBody, routeErrorResponse, validationErrorResponse } from "@/src
 export const runtime = "nodejs";
 
 export async function POST(request: Request) {
+  const auth = await requireUser();
+
   try {
-    const auth = await requireUser();
     const body = await readJsonBody(request);
     const parsed = paymentProofUploadSchema.safeParse(body);
 
