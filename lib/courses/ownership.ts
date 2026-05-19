@@ -5,6 +5,11 @@ export type CourseOwnership = {
   creatorId: string | null;
 };
 
+type CourseOwnershipRow = {
+  id: string;
+  creator_id: string | null;
+};
+
 export function isCourseOwner(course: CourseOwnership, userId: string): boolean {
   return course.creatorId === userId;
 }
@@ -21,7 +26,8 @@ export async function getCourseOwnership(courseId: string): Promise<CourseOwners
     throw new Error(`Unable to load course ownership: ${error.message}`);
   }
 
-  return data ? { courseId: data.id, creatorId: data.creator_id } : null;
+  const row = data as CourseOwnershipRow | null;
+  return row ? { courseId: row.id, creatorId: row.creator_id } : null;
 }
 
 export async function assertCourseOwner(courseId: string, userId: string): Promise<void> {
