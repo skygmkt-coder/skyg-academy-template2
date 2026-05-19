@@ -10,9 +10,13 @@ import type { Profile } from "@/lib/engines/auth/types";
 type EnrollmentRow = {
   id: string;
   user_id: string;
+  course_id: string;
   product_id: string;
   status: string;
+  enrolled_at: string;
   expires_at: string | null;
+  payment_provider: string | null;
+  payment_reference: string | null;
   granted_by: string | null;
   granted_reason: string | null;
   created_at: string;
@@ -33,9 +37,13 @@ function mapEnrollment(row: EnrollmentRow): Enrollment {
   return {
     id: row.id,
     userId: row.user_id,
+    courseId: row.course_id,
     productId: row.product_id,
     status: normalizeEnrollmentStatus(row.status),
+    enrolledAt: row.enrolled_at,
     expiresAt: row.expires_at,
+    paymentProvider: row.payment_provider,
+    paymentReference: row.payment_reference,
     grantedBy: row.granted_by,
     grantedReason: row.granted_reason,
     createdAt: row.created_at,
@@ -64,7 +72,7 @@ function normalizeEnrollmentStatus(status: string): EnrollmentStatus {
 }
 
 const enrollmentColumns =
-  "id,user_id,product_id,status,expires_at,granted_by,granted_reason,created_at,updated_at";
+  "id,user_id,course_id,product_id,status,enrolled_at,expires_at,payment_provider,payment_reference,granted_by,granted_reason,created_at,updated_at";
 const progressColumns =
   "id,user_id,product_id,lesson_id,is_completed,last_viewed_at,completed_at";
 
@@ -74,8 +82,8 @@ export async function getActiveEnrollment(userId: string, productId: string): Pr
     .from("enrollments")
     .select(enrollmentColumns)
     .eq("user_id", userId)
-    .eq("product_id", productId)
     .eq("status", "active")
+    .or(`course_id.eq.${productId},product_id.eq.${productId}`)
     .or(`expires_at.is.null,expires_at.gt.${new Date().toISOString()}`)
     .maybeSingle();
 
@@ -83,7 +91,7 @@ export async function getActiveEnrollment(userId: string, productId: string): Pr
     throw new Error(`Unable to load enrollment: ${error.message}`);
   }
 
-  return data ? mapEnrollment(data) : null;
+  return data ? mapEnrollment(data as EnrollmentRow) : null;
 }
 
 export async function listActiveEnrollmentsForUser(userId: string): Promise<Enrollment[]> {
@@ -94,13 +102,13 @@ export async function listActiveEnrollmentsForUser(userId: string): Promise<Enro
     .eq("user_id", userId)
     .eq("status", "active")
     .or(`expires_at.is.null,expires_at.gt.${new Date().toISOString()}`)
-    .order("created_at", { ascending: false });
+    .order("enrolled_at", { ascending: false });
 
   if (error) {
     throw new Error(`Unable to list enrollments: ${error.message}`);
   }
 
-  return data.map(mapEnrollment);
+  return (data as EnrollmentRow[]).map(mapEnrollment);
 }
 
 export async function listEnrollmentsByProductId(productId: string): Promise<AdminEnrollment[]> {
@@ -108,15 +116,15 @@ export async function listEnrollmentsByProductId(productId: string): Promise<Adm
   const { data, error } = await supabase
     .from("enrollments")
     .select(`${enrollmentColumns}, profiles:profiles!enrollments_user_id_fkey(id,email,full_name,role)`)
-    .eq("product_id", productId)
-    .order("created_at", { ascending: false });
+    .or(`course_id.eq.${productId},product_id.eq.${productId}`)
+    .order("enrolled_at", { ascending: false });
 
   if (error) {
     throw new Error(`Unable to list product enrollments: ${error.message}`);
   }
 
   return data.map((row) => ({
-    ...mapEnrollment(row),
+    ...mapEnrollment(row as EnrollmentRow),
     student: mapProfile(row.profiles)
   }));
 }
@@ -134,13 +142,17 @@ export async function grantEnrollment(input: {
     .upsert(
       {
         user_id: input.userId,
+        course_id: input.productId,
         product_id: input.productId,
         status: "active",
+        enrolled_at: new Date().toISOString(),
         expires_at: input.expiresAt,
+        payment_provider: null,
+        payment_reference: null,
         granted_by: input.grantedBy,
         granted_reason: input.grantedReason
       },
-      { onConflict: "user_id,product_id" }
+      { onConflict: "user_id,course_id" }
     )
     .select(enrollmentColumns)
     .single();
@@ -149,7 +161,7 @@ export async function grantEnrollment(input: {
     throw new Error(`Unable to grant enrollment: ${error.message}`);
   }
 
-  return mapEnrollment(data);
+  return mapEnrollment(data as EnrollmentRow);
 }
 
 export async function revokeEnrollment(enrollmentId: string): Promise<Enrollment> {
@@ -165,7 +177,7 @@ export async function revokeEnrollment(enrollmentId: string): Promise<Enrollment
     throw new Error(`Unable to revoke enrollment: ${error.message}`);
   }
 
-  return mapEnrollment(data);
+  return mapEnrollment(data as EnrollmentRow);
 }
 
 export async function listProgressForProduct(userId: string, productId: string): Promise<LessonProgress[]> {

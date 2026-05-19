@@ -7,9 +7,13 @@ export type EnrollmentStatus = "active" | "expired" | "revoked";
 export type Enrollment = {
   id: string;
   userId: string;
+  courseId: string;
   productId: string;
   status: EnrollmentStatus;
+  enrolledAt: string;
   expiresAt: string | null;
+  paymentProvider: string | null;
+  paymentReference: string | null;
   grantedBy: string | null;
   grantedReason: string | null;
   createdAt: string;

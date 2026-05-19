@@ -1,7 +1,8 @@
-import { notFound, redirect } from "next/navigation";
+import { notFound } from "next/navigation";
 
 import type { AuthenticatedUser } from "@/lib/engines/auth/types";
-import { getActiveEnrollment, listProgressForProduct, markLessonCompleted, markLessonViewed } from "@/lib/engines/learning/repository";
+import { checkCourseAccess } from "@/lib/engines/learning/enrollments";
+import { listProgressForProduct, markLessonCompleted, markLessonViewed } from "@/lib/engines/learning/repository";
 import type { CoursePlayerExperience, CoursePlayerLesson, CoursePlayerModule } from "@/lib/engines/learning/types";
 import { createClient } from "@/lib/supabase/server";
 
@@ -71,10 +72,10 @@ export async function getCoursePlayerExperience(input: {
     notFound();
   }
 
-  const hasAccess = await canAccessCourse(input.auth, course);
+  const hasAccess = await checkCourseAccess(input.auth, course.id);
 
   if (!hasAccess) {
-    redirect("/mis-productos");
+    return emptyExperience(course, false);
   }
 
   const [modules, lessons, resources, progressRows] = await Promise.all([
@@ -109,17 +110,7 @@ export async function getCoursePlayerExperience(input: {
   const completedLessons = completedSet.size;
 
   return {
-    course: {
-      id: course.id,
-      creatorId: course.creator_id,
-      title: course.title,
-      slug: course.slug,
-      description: course.description,
-      coverImageUrl: course.cover_image_url,
-      isPublished: course.is_published,
-      createdAt: course.created_at,
-      updatedAt: course.updated_at
-    },
+    course: mapCourse(course),
     modules: buildPlayerModules(modules, playerLessons),
     activeLesson: activeLesson ?? null,
     previousLessonId: activeIndex > 0 ? playerLessons[activeIndex - 1]?.id ?? null : null,
@@ -141,6 +132,12 @@ export async function completeCoursePlayerLesson(input: {
   courseId: string;
   lessonId: string;
 }): Promise<void> {
+  const hasAccess = await checkCourseAccess(input.auth, input.courseId);
+
+  if (!hasAccess) {
+    throw new Error("No tienes acceso a este curso.");
+  }
+
   const experience = await getCoursePlayerExperience({
     auth: input.auth,
     courseId: input.courseId,
@@ -244,15 +241,6 @@ async function listLessonIds(courseId: string): Promise<string[]> {
   return data.map((row) => row.id);
 }
 
-async function canAccessCourse(auth: AuthenticatedUser, course: CourseRow): Promise<boolean> {
-  if (auth.profile.role === "admin" || course.creator_id === auth.user.id) {
-    return true;
-  }
-
-  const enrollment = await getActiveEnrollment(auth.user.id, course.id);
-  return Boolean(enrollment);
-}
-
 function buildPlayerModules(modules: ModuleRow[], lessons: CoursePlayerLesson[]): CoursePlayerModule[] {
   const knownModuleIds = new Set(modules.map((module) => module.id));
   const grouped = modules.map((module) => ({
@@ -327,4 +315,37 @@ function resolveActiveLesson(
   }
 
   return lessons[0] ?? null;
+}
+
+function mapCourse(course: CourseRow): CoursePlayerExperience["course"] {
+  return {
+    id: course.id,
+    creatorId: course.creator_id,
+    title: course.title,
+    slug: course.slug,
+    description: course.description,
+    coverImageUrl: course.cover_image_url,
+    isPublished: course.is_published,
+    createdAt: course.created_at,
+    updatedAt: course.updated_at
+  };
+}
+
+function emptyExperience(course: CourseRow, hasAccess: boolean): CoursePlayerExperience {
+  return {
+    course: mapCourse(course),
+    modules: [],
+    activeLesson: null,
+    previousLessonId: null,
+    nextLessonId: null,
+    progress: {
+      productId: course.id,
+      totalLessons: 0,
+      completedLessons: 0,
+      progressPercentage: 0,
+      lastViewedLessonSlug: null
+    },
+    completedLessonIds: [],
+    hasAccess
+  };
 }

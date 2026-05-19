@@ -259,9 +259,13 @@ export type Database = {
         Row: {
           id: string;
           user_id: string;
+          course_id: string;
           product_id: string;
           status: string;
+          enrolled_at: string;
           expires_at: string | null;
+          payment_provider: string | null;
+          payment_reference: string | null;
           granted_by: string | null;
           granted_reason: string | null;
           created_at: string;
@@ -270,9 +274,13 @@ export type Database = {
         Insert: {
           id?: string;
           user_id: string;
+          course_id: string;
           product_id: string;
           status?: string;
+          enrolled_at?: string;
           expires_at?: string | null;
+          payment_provider?: string | null;
+          payment_reference?: string | null;
           granted_by?: string | null;
           granted_reason?: string | null;
           created_at?: string;
@@ -281,15 +289,26 @@ export type Database = {
         Update: {
           id?: string;
           user_id?: string;
+          course_id?: string;
           product_id?: string;
           status?: string;
+          enrolled_at?: string;
           expires_at?: string | null;
+          payment_provider?: string | null;
+          payment_reference?: string | null;
           granted_by?: string | null;
           granted_reason?: string | null;
           created_at?: string;
           updated_at?: string;
         };
         Relationships: [
+          {
+            foreignKeyName: "enrollments_course_id_fkey";
+            columns: ["course_id"];
+            isOneToOne: false;
+            referencedRelation: "products";
+            referencedColumns: ["id"];
+          },
           {
             foreignKeyName: "enrollments_product_id_fkey";
             columns: ["product_id"];
