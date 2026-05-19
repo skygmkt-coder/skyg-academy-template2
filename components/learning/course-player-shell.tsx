@@ -1,8 +1,22 @@
 import Link from "next/link";
-import { BookOpen, CheckCircle2, ChevronLeft, ChevronRight, Circle, Download, FileText, Lock, Menu, PlayCircle } from "lucide-react";
+import {
+  BookOpen,
+  CheckCircle2,
+  ChevronLeft,
+  ChevronRight,
+  Circle,
+  CreditCard,
+  Download,
+  ExternalLink,
+  FileText,
+  Lock,
+  Menu,
+  PlayCircle
+} from "lucide-react";
 
-import { completeCoursePlayerLessonAction } from "@/lib/engines/learning/actions";
-import type { CoursePlayerExperience, CoursePlayerLesson } from "@/lib/engines/learning/types";
+import { PaymentProofForm } from "@/components/learning/payment-proof-form";
+import { completeCoursePlayerLessonAction, enrollFreeCourseAction } from "@/lib/engines/learning/actions";
+import type { CoursePlayerExperience, CoursePlayerLesson, PaymentProofStatus, PaymentType } from "@/lib/engines/learning/types";
 
 type CoursePlayerShellProps = {
   experience: CoursePlayerExperience;
@@ -19,29 +33,127 @@ function formatDuration(minutes: number | null): string {
   return `${minutes} min`;
 }
 
+function paymentTypeLabel(type: PaymentType): string {
+  if (type === "transfer") return "Transferencia";
+  if (type === "dimo") return "DIMO";
+  if (type === "mixed") return "Transferencia + DIMO";
+  return "Gratis";
+}
+
+function proofStatusLabel(status: PaymentProofStatus): string {
+  if (status === "approved") return "Aprobado";
+  if (status === "rejected") return "Rechazado";
+  return "Pendiente de revision";
+}
+
+function proofStatusClass(status: PaymentProofStatus): string {
+  if (status === "approved") return "bg-emerald-50 text-emerald-700";
+  if (status === "rejected") return "bg-rose-50 text-rose-700";
+  return "bg-amber-50 text-amber-700";
+}
+
 export function CoursePlayerShell({ experience }: CoursePlayerShellProps) {
   const activeLesson = experience.activeLesson;
+  const settings = experience.paymentSettings;
+  const latestProof = experience.paymentProofs[0] ?? null;
+  const canSubmitProof = settings.paymentType !== "free" && latestProof?.status !== "pending";
 
   if (!experience.hasAccess) {
     return (
-      <section className="rounded-lg border border-slate-200 bg-white p-8">
-        <div className="mx-auto flex max-w-2xl flex-col items-center text-center">
-          <span className="flex h-12 w-12 items-center justify-center rounded-md bg-brand-primary/10 text-brand-primary">
-            <Lock aria-hidden className="h-6 w-6" />
-          </span>
-          <p className="mt-5 text-sm font-medium uppercase tracking-normal text-brand-primary">Acceso requerido</p>
-          <h1 className="mt-2 text-2xl font-semibold text-slate-950">{experience.course.title}</h1>
-          <p className="mt-3 text-sm leading-6 text-slate-600">
-            Este curso requiere enrollment activo. Si ya realizaste tu pago o recibiste acceso manual, vuelve a intentarlo despues de que tu acceso sea aprobado.
-          </p>
-          <div className="mt-6 flex flex-col gap-3 sm:flex-row">
-            <Link href="/mis-productos" className="inline-flex min-h-11 items-center justify-center rounded-md bg-brand-primary px-4 py-2 text-sm font-semibold text-white">
+      <section className="rounded-lg border border-slate-200 bg-white p-5 md:p-8">
+        <div className="mx-auto grid max-w-5xl gap-6 lg:grid-cols-[1fr_360px] lg:items-start">
+          <div className="space-y-5">
+            <span className="flex h-12 w-12 items-center justify-center rounded-md bg-brand-primary/10 text-brand-primary">
+              <Lock aria-hidden className="h-6 w-6" />
+            </span>
+            <div>
+              <p className="text-sm font-medium uppercase tracking-normal text-brand-primary">Acceso requerido</p>
+              <h1 className="mt-2 text-2xl font-semibold text-slate-950">{experience.course.title}</h1>
+              <p className="mt-3 text-sm leading-6 text-slate-600">
+                Este curso requiere acceso activo. Revisa las instrucciones de pago y envia tu comprobante para que el equipo lo valide.
+              </p>
+            </div>
+
+            <div className="grid gap-3 sm:grid-cols-3">
+              <div className="rounded-md border border-slate-200 bg-slate-50 p-4">
+                <p className="text-xs font-medium uppercase tracking-normal text-slate-500">Metodo</p>
+                <p className="mt-1 font-semibold text-slate-950">{paymentTypeLabel(settings.paymentType)}</p>
+              </div>
+              <div className="rounded-md border border-slate-200 bg-slate-50 p-4">
+                <p className="text-xs font-medium uppercase tracking-normal text-slate-500">Comprobante</p>
+                <p className="mt-1 font-semibold text-slate-950">{latestProof ? proofStatusLabel(latestProof.status) : "No enviado"}</p>
+              </div>
+              <div className="rounded-md border border-slate-200 bg-slate-50 p-4">
+                <p className="text-xs font-medium uppercase tracking-normal text-slate-500">Progreso</p>
+                <p className="mt-1 font-semibold text-slate-950">Bloqueado</p>
+              </div>
+            </div>
+
+            {latestProof ? (
+              <div className="rounded-md border border-slate-200 bg-white p-4 text-sm text-slate-700">
+                <span className={`inline-flex rounded-md px-2 py-1 text-xs font-semibold ${proofStatusClass(latestProof.status)}`}>
+                  {proofStatusLabel(latestProof.status)}
+                </span>
+                <p className="mt-2">
+                  {latestProof.status === "pending"
+                    ? "Tu comprobante esta en revision. Cuando sea aprobado, el acceso se activa automaticamente."
+                    : latestProof.status === "rejected"
+                      ? "El comprobante fue rechazado. Puedes subir uno nuevo con datos correctos."
+                      : "Tu comprobante fue aprobado. Actualiza la pagina si el acceso aun no aparece."}
+                </p>
+              </div>
+            ) : null}
+          </div>
+
+          <aside className="space-y-4 rounded-lg border border-slate-200 bg-slate-50 p-5">
+            <div className="flex items-center gap-2 text-slate-950">
+              <CreditCard aria-hidden className="h-5 w-5 text-brand-primary" />
+              <h2 className="font-semibold">Pago manual</h2>
+            </div>
+
+            {settings.paymentType === "free" ? (
+              <form action={enrollFreeCourseAction} className="space-y-3">
+                <input type="hidden" name="courseId" value={experience.course.id} />
+                <p className="text-sm leading-6 text-slate-600">Este curso esta configurado como gratis. Activa tu acceso para comenzar.</p>
+                <button type="submit" className="inline-flex min-h-11 w-full items-center justify-center rounded-md bg-brand-primary px-4 py-2 text-sm font-semibold text-white">
+                  Activar acceso gratis
+                </button>
+              </form>
+            ) : (
+              <div className="space-y-4">
+                {settings.paymentType !== "dimo" ? (
+                  <div className="space-y-2 rounded-md border border-slate-200 bg-white p-4 text-sm text-slate-700">
+                    <p className="font-semibold text-slate-950">Transferencia bancaria</p>
+                    {settings.transferBank ? <p>Banco: {settings.transferBank}</p> : null}
+                    {settings.transferClabe ? <p>CLABE: {settings.transferClabe}</p> : null}
+                    {settings.transferOwner ? <p>Titular: {settings.transferOwner}</p> : null}
+                    {!settings.transferBank && !settings.transferClabe && !settings.transferOwner ? (
+                      <p>El equipo aun no publico datos bancarios. Contacta al administrador del curso.</p>
+                    ) : null}
+                  </div>
+                ) : null}
+
+                {(settings.paymentType === "dimo" || settings.paymentType === "mixed") && settings.dimoUrl ? (
+                  <a
+                    href={settings.dimoUrl}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-md bg-slate-950 px-4 py-2 text-sm font-semibold text-white"
+                  >
+                    Pagar con DIMO
+                    <ExternalLink aria-hidden className="h-4 w-4" />
+                  </a>
+                ) : null}
+
+                {settings.paymentNotes ? <p className="whitespace-pre-line text-sm leading-6 text-slate-600">{settings.paymentNotes}</p> : null}
+                {canSubmitProof ? <PaymentProofForm courseId={experience.course.id} /> : null}
+              </div>
+            )}
+
+            <Link href="/mis-productos" className="inline-flex min-h-11 w-full items-center justify-center rounded-md border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-800">
               Ir a mis productos
             </Link>
-            <Link href={`/checkout/${experience.course.slug}`} className="inline-flex min-h-11 items-center justify-center rounded-md border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-800">
-              Solicitar acceso
-            </Link>
-          </div>
+          </aside>
         </div>
       </section>
     );

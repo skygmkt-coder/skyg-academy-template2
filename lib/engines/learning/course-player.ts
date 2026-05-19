@@ -2,6 +2,7 @@ import { notFound } from "next/navigation";
 
 import type { AuthenticatedUser } from "@/lib/engines/auth/types";
 import { checkCourseAccess } from "@/lib/engines/learning/enrollments";
+import { getCoursePaymentSettings, listStudentPaymentProofs } from "@/lib/engines/learning/manual-payments";
 import { listProgressForProduct, markLessonCompleted, markLessonViewed } from "@/lib/engines/learning/repository";
 import type { CoursePlayerExperience, CoursePlayerLesson, CoursePlayerModule } from "@/lib/engines/learning/types";
 import { createClient } from "@/lib/supabase/server";
@@ -72,10 +73,14 @@ export async function getCoursePlayerExperience(input: {
     notFound();
   }
 
-  const hasAccess = await checkCourseAccess(input.auth, course.id);
+  const [hasAccess, paymentSettings, paymentProofs] = await Promise.all([
+    checkCourseAccess(input.auth, course.id),
+    getCoursePaymentSettings(course.id),
+    listStudentPaymentProofs(input.auth.user.id, course.id)
+  ]);
 
   if (!hasAccess) {
-    return emptyExperience(course, false);
+    return emptyExperience(course, false, paymentSettings, paymentProofs);
   }
 
   const [modules, lessons, resources, progressRows] = await Promise.all([
@@ -123,7 +128,9 @@ export async function getCoursePlayerExperience(input: {
       lastViewedLessonSlug: null
     },
     completedLessonIds,
-    hasAccess
+    hasAccess,
+    paymentSettings,
+    paymentProofs
   };
 }
 
@@ -331,7 +338,12 @@ function mapCourse(course: CourseRow): CoursePlayerExperience["course"] {
   };
 }
 
-function emptyExperience(course: CourseRow, hasAccess: boolean): CoursePlayerExperience {
+function emptyExperience(
+  course: CourseRow,
+  hasAccess: boolean,
+  paymentSettings: CoursePlayerExperience["paymentSettings"],
+  paymentProofs: CoursePlayerExperience["paymentProofs"]
+): CoursePlayerExperience {
   return {
     course: mapCourse(course),
     modules: [],
@@ -346,6 +358,8 @@ function emptyExperience(course: CourseRow, hasAccess: boolean): CoursePlayerExp
       lastViewedLessonSlug: null
     },
     completedLessonIds: [],
-    hasAccess
+    hasAccess,
+    paymentSettings,
+    paymentProofs
   };
 }

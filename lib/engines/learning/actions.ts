@@ -7,6 +7,13 @@ import { requireAdmin, requireUser } from "@/lib/engines/auth/helpers";
 import { completeCoursePlayerLesson } from "@/lib/engines/learning/course-player";
 import { canManageCourseEnrollment, enrollUserToCourse, revokeCourseAccess } from "@/lib/engines/learning/enrollments";
 import {
+  approveCoursePaymentProof,
+  enrollFreeCourse,
+  rejectCoursePaymentProof,
+  submitCoursePaymentProof,
+  updateCoursePaymentSettings
+} from "@/lib/engines/learning/manual-payments";
+import {
   completeLesson,
   grantManualEnrollment,
   revokeManualEnrollment
@@ -15,10 +22,14 @@ import type { LearningActionState } from "@/lib/engines/learning/types";
 import {
   completeCoursePlayerLessonSchema,
   completeLessonSchema,
+  enrollFreeCourseSchema,
   enrollUserToCourseSchema,
   grantEnrollmentSchema,
+  reviewCoursePaymentProofSchema,
   revokeCourseAccessSchema,
-  revokeEnrollmentSchema
+  revokeEnrollmentSchema,
+  submitCoursePaymentProofSchema,
+  updateCoursePaymentSettingsSchema
 } from "@/lib/engines/learning/validation";
 
 const successState = (message: string): LearningActionState => ({ status: "success", message });
@@ -170,4 +181,95 @@ export async function revokeCourseAccessAction(formData: FormData): Promise<void
   revalidatePath(`/admin/cursos/${parsed.data.courseId}`);
   revalidatePath(`/learn/${parsed.data.courseId}`);
   revalidatePath("/mis-productos");
+}
+
+export async function updateCoursePaymentSettingsAction(formData: FormData): Promise<void> {
+  const auth = await requireUser();
+  const parsed = updateCoursePaymentSettingsSchema.safeParse({
+    courseId: stringFromForm(formData, "courseId"),
+    paymentType: stringFromForm(formData, "paymentType"),
+    dimoUrl: stringFromForm(formData, "dimoUrl"),
+    transferBank: stringFromForm(formData, "transferBank"),
+    transferClabe: stringFromForm(formData, "transferClabe"),
+    transferOwner: stringFromForm(formData, "transferOwner"),
+    paymentNotes: stringFromForm(formData, "paymentNotes")
+  });
+
+  if (!parsed.success) {
+    throw new Error(parsed.error.errors[0]?.message ?? "Configuracion invalida.");
+  }
+
+  await updateCoursePaymentSettings(auth, parsed.data);
+  revalidatePath(`/admin/cursos/${parsed.data.courseId}`);
+  revalidatePath(`/learn/${parsed.data.courseId}`);
+}
+
+export async function submitCoursePaymentProofAction(formData: FormData): Promise<LearningActionState> {
+  const auth = await requireUser();
+  const parsed = submitCoursePaymentProofSchema.safeParse({
+    courseId: stringFromForm(formData, "courseId"),
+    imageUrl: stringFromForm(formData, "imageUrl"),
+    notes: stringFromForm(formData, "notes")
+  });
+
+  if (!parsed.success) {
+    return errorState(parsed.error.errors[0]?.message ?? "Comprobante invalido.");
+  }
+
+  try {
+    await submitCoursePaymentProof({ auth, ...parsed.data });
+  } catch (error) {
+    return errorState(error instanceof Error ? error.message : "No pudimos guardar el comprobante.");
+  }
+
+  revalidatePath(`/learn/${parsed.data.courseId}`);
+  revalidatePath(`/admin/cursos/${parsed.data.courseId}`);
+  return successState("Comprobante enviado. Revisaremos tu acceso pronto.");
+}
+
+export async function approveCoursePaymentProofAction(formData: FormData): Promise<void> {
+  const auth = await requireUser();
+  const parsed = reviewCoursePaymentProofSchema.safeParse({
+    courseId: stringFromForm(formData, "courseId"),
+    proofId: stringFromForm(formData, "proofId")
+  });
+
+  if (!parsed.success) {
+    throw new Error("Comprobante invalido.");
+  }
+
+  await approveCoursePaymentProof({ auth, ...parsed.data });
+  revalidatePath(`/admin/cursos/${parsed.data.courseId}`);
+  revalidatePath(`/learn/${parsed.data.courseId}`);
+  revalidatePath("/mis-productos");
+}
+
+export async function rejectCoursePaymentProofAction(formData: FormData): Promise<void> {
+  const auth = await requireUser();
+  const parsed = reviewCoursePaymentProofSchema.safeParse({
+    courseId: stringFromForm(formData, "courseId"),
+    proofId: stringFromForm(formData, "proofId")
+  });
+
+  if (!parsed.success) {
+    throw new Error("Comprobante invalido.");
+  }
+
+  await rejectCoursePaymentProof({ auth, ...parsed.data });
+  revalidatePath(`/admin/cursos/${parsed.data.courseId}`);
+  revalidatePath(`/learn/${parsed.data.courseId}`);
+}
+
+export async function enrollFreeCourseAction(formData: FormData): Promise<void> {
+  const auth = await requireUser();
+  const parsed = enrollFreeCourseSchema.safeParse({ courseId: stringFromForm(formData, "courseId") });
+
+  if (!parsed.success) {
+    throw new Error("Curso invalido.");
+  }
+
+  await enrollFreeCourse(auth, parsed.data.courseId);
+  revalidatePath(`/learn/${parsed.data.courseId}`);
+  revalidatePath("/mis-productos");
+  redirect(`/learn/${parsed.data.courseId}`);
 }
