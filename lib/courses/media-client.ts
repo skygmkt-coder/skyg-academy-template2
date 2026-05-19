@@ -2,6 +2,7 @@
 
 import { createClient } from "@/lib/supabase/client";
 import type { CourseMediaIntent } from "@/lib/courses/media";
+import { APP_ROUTES } from "@/src/config";
 
 type UploadResult = {
   bucket: string;
@@ -34,7 +35,7 @@ export async function uploadLessonMedia(courseId: string, lessonId: string, file
 }
 
 async function uploadCourseMedia(input: UploadInput): Promise<UploadResult> {
-  const response = await fetch("/api/uploads/course-media", {
+  const response = await fetch(APP_ROUTES.uploadCourseMedia, {
     method: "POST",
     headers: { "content-type": "application/json" },
     body: JSON.stringify({

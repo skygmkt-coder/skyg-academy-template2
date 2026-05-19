@@ -1,17 +1,16 @@
 import type { NextConfig } from "next";
 
+import { SUPABASE_IMAGE_REMOTE_PATTERN } from "./src/config/providers";
+import { getOptionalSupabaseUrl } from "./src/env/server";
+
 function getSupabaseImageHostname(): string | undefined {
-  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const supabaseUrl = getOptionalSupabaseUrl();
 
   if (!supabaseUrl) {
     return undefined;
   }
 
-  try {
-    return new URL(supabaseUrl).hostname;
-  } catch {
-    return undefined;
-  }
+  return new URL(supabaseUrl).hostname;
 }
 
 const supabaseImageHostname = getSupabaseImageHostname();
@@ -23,7 +22,7 @@ const nextConfig: NextConfig = {
     remotePatterns: supabaseImageHostname
       ? [
           {
-            protocol: "https",
+            ...SUPABASE_IMAGE_REMOTE_PATTERN,
             hostname: supabaseImageHostname
           }
         ]

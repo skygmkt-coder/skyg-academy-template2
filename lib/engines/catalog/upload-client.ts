@@ -2,12 +2,13 @@
 
 import { createClient } from "@/lib/supabase/client";
 import type { SignedUploadIntent } from "@/lib/engines/catalog/types";
+import { APP_ROUTES } from "@/src/config";
 
 export async function uploadCatalogAsset(input: {
   intent: SignedUploadIntent;
   file: File;
 }): Promise<string> {
-  const response = await fetch("/api/uploads/signed-url", {
+  const response = await fetch(APP_ROUTES.uploadCatalogAsset, {
     method: "POST",
     headers: {
       "content-type": "application/json"
