@@ -100,7 +100,7 @@ export type CoursePlayerResource = {
   displayOrder: number;
 };
 
-export type CoursePlayerLesson = Lesson & {
+export type CoursePlayerLesson = Omit<Lesson, "resources"> & {
   resources: CoursePlayerResource[];
   isCompleted: boolean;
 };

@@ -5,6 +5,9 @@ export type Course = {
   slug: string;
   description: string | null;
   coverImageUrl: string | null;
+  coverImagePath: string | null;
+  thumbnailUrl: string | null;
+  thumbnailPath: string | null;
   isPublished: boolean;
   createdAt: string;
   updatedAt: string;
@@ -25,6 +28,20 @@ export type Module = {
   updatedAt: string;
 };
 
+export type LessonResource = {
+  id: string;
+  lessonId: string;
+  title: string;
+  fileUrl: string;
+  fileBucket: string | null;
+  filePath: string | null;
+  fileType: string | null;
+  fileSize: number | null;
+  displayOrder: number;
+  createdAt: string;
+  updatedAt: string;
+};
+
 export type Lesson = {
   id: string;
   courseId: string;
@@ -33,6 +50,9 @@ export type Lesson = {
   slug: string;
   description: string | null;
   videoUrl: string | null;
+  mediaBucket: string | null;
+  mediaPath: string | null;
+  mediaKind: "video" | "pdf" | "image" | "external" | null;
   displayOrder: number;
   isPreview: boolean;
   lessonType: "video" | "text" | "pdf";
@@ -40,6 +60,7 @@ export type Lesson = {
   status: "draft" | "published";
   createdAt: string;
   updatedAt: string;
+  resources: LessonResource[];
 };
 
 export type ModuleWithLessons = Module & {
