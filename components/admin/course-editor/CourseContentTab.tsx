@@ -1,4 +1,3 @@
-< course-module-sidebar
 "use client";
 
 import { useState } from "react";
@@ -7,32 +6,58 @@ const modules = [
   {
     id: 1,
     title: "Módulo 1: Introducción",
-    lessons: ["Bienvenida", "Cómo usar este curso", "Objetivos"],
+    lessons: [
+      {
+        title: "Bienvenida",
+        type: "Video",
+        duration: "5 min",
+        status: "Publicado",
+      },
+      {
+        title: "Cómo usar este curso",
+        type: "Video",
+        duration: "12 min",
+        status: "Draft",
+      },
+      {
+        title: "Objetivos",
+        type: "Texto",
+        duration: "3 min",
+        status: "Publicado",
+      },
+    ],
   },
   {
     id: 2,
     title: "Módulo 2: Fundamentos",
-    lessons: ["Conceptos clave", "Ejercicio práctico", "Resumen"],
-=======
-const modules = [
-  {
-    title: "Módulo 1: Introducción",
-    lessons: ["Bienvenida", "Cómo usar este curso", "Objetivo del módulo"],
-  },
-  {
-    title: "Módulo 2: Fundamentos",
-    lessons: ["Conceptos clave", "Ejercicio práctico", "Cierre del módulo"],
-> main
+    lessons: [
+      {
+        title: "Conceptos clave",
+        type: "Video",
+        duration: "18 min",
+        status: "Publicado",
+      },
+      {
+        title: "Ejercicio práctico",
+        type: "PDF",
+        duration: "10 min",
+        status: "Draft",
+      },
+      {
+        title: "Resumen",
+        type: "Texto",
+        duration: "4 min",
+        status: "Publicado",
+      },
+    ],
   },
 ];
 
 export default function CourseContentTab() {
-< course-module-sidebar
   const [selectedModule, setSelectedModule] = useState(modules[0]);
 
   return (
     <div className="grid gap-6 lg:grid-cols-[320px_1fr]">
-      {/* Sidebar */}
       <aside className="rounded-2xl border border-gray-200 bg-white p-4">
         <div className="mb-4 flex items-center justify-between">
           <h2 className="font-bold text-gray-900">Módulos</h2>
@@ -71,7 +96,6 @@ export default function CourseContentTab() {
         </div>
       </aside>
 
-      {/* Content */}
       <section className="rounded-2xl border border-gray-200 bg-white p-6">
         <div className="flex items-center justify-between">
           <div>
@@ -92,69 +116,34 @@ export default function CourseContentTab() {
         <div className="mt-8 space-y-3">
           {selectedModule.lessons.map((lesson) => (
             <div
-              key={lesson}
-              className="flex items-center justify-between rounded-xl border border-gray-200 p-4"
+              key={lesson.title}
+              className="flex items-center justify-between rounded-2xl border border-gray-200 bg-white p-5"
             >
               <div>
-                <p className="font-medium text-gray-900">{lesson}</p>
+                <div className="flex items-center gap-2">
+                  <p className="font-semibold text-gray-900">
+                    {lesson.title}
+                  </p>
 
-                <p className="text-sm text-gray-500">
-                  Lección del módulo
-                </p>
+                  <span className="rounded-full bg-gray-100 px-2 py-1 text-xs text-gray-600">
+                    {lesson.type}
+                  </span>
+                </div>
+
+                <div className="mt-2 flex items-center gap-3 text-sm text-gray-500">
+                  <span>{lesson.duration}</span>
+                  <span>•</span>
+                  <span>{lesson.status}</span>
+                </div>
               </div>
 
-              <button className="text-sm text-gray-500 hover:text-black">
+              <button className="rounded-xl border border-gray-200 px-4 py-2 text-sm hover:bg-gray-50">
                 Editar
               </button>
             </div>
           ))}
         </div>
       </section>
-=======
-  return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h2 className="text-xl font-bold text-gray-900">Contenido del curso</h2>
-          <p className="text-sm text-gray-500">
-            Organiza módulos y lecciones del programa.
-          </p>
-        </div>
-
-        <button className="rounded-xl bg-black px-4 py-2 text-sm font-medium text-white">
-          Agregar módulo
-        </button>
-      </div>
-
-      <div className="space-y-4">
-        {modules.map((module) => (
-          <div
-            key={module.title}
-            className="rounded-2xl border border-gray-200 bg-white p-5"
-          >
-            <h3 className="font-semibold text-gray-900">{module.title}</h3>
-
-            <div className="mt-4 space-y-2">
-              {module.lessons.map((lesson) => (
-                <div
-                  key={lesson}
-                  className="flex items-center justify-between rounded-xl bg-gray-50 px-4 py-3 text-sm"
-                >
-                  <span>{lesson}</span>
-                  <button className="text-gray-500 hover:text-gray-900">
-                    Editar
-                  </button>
-                </div>
-              ))}
-            </div>
-
-            <button className="mt-4 text-sm font-medium text-gray-600 hover:text-black">
-              + Agregar lección
-            </button>
-          </div>
-        ))}
-      </div>
-> main
     </div>
   );
 }
