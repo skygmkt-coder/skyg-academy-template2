@@ -30,8 +30,8 @@ export default async function MyProductsPage() {
         <div className="grid gap-4 md:grid-cols-2">
           {products.map(({ product, progress }) => {
             const continueHref = progress.lastViewedLessonSlug
-              ? `/aprender/${product.slug}/${progress.lastViewedLessonSlug}`
-              : `/aprender/${product.slug}`;
+              ? `/learn/${product.id}?lessonSlug=${progress.lastViewedLessonSlug}`
+              : `/learn/${product.id}`;
 
             return (
               <article key={product.id} className="overflow-hidden rounded-lg border border-slate-200 bg-white">
@@ -79,7 +79,7 @@ export default async function MyProductsPage() {
                 <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
                   <div>
                     <p className="font-semibold text-slate-950">{payment.order.product?.title ?? payment.order.productId}</p>
-                    <p>{payment.method} · {payment.status}</p>
+                    <p>{payment.method} - {payment.status}</p>
                     {payment.rejectionReason ? <p className="text-red-700">{payment.rejectionReason}</p> : null}
                   </div>
                   {payment.status === "rejected" && payment.order.product ? (

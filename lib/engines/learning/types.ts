@@ -1,5 +1,6 @@
 import type { Profile } from "@/lib/engines/auth/types";
 import type { Product, ProductWithLessons } from "@/lib/engines/catalog/types";
+import type { Course, Lesson, Module } from "@/lib/courses/types";
 
 export type EnrollmentStatus = "active" | "expired" | "revoked";
 
@@ -56,6 +57,34 @@ export type AdminEnrollment = Enrollment & {
 export type LearningActionState = {
   status: "idle" | "success" | "error";
   message: string;
+};
+
+export type CoursePlayerResource = {
+  id: string;
+  lessonId: string;
+  title: string;
+  fileUrl: string;
+  displayOrder: number;
+};
+
+export type CoursePlayerLesson = Lesson & {
+  resources: CoursePlayerResource[];
+  isCompleted: boolean;
+};
+
+export type CoursePlayerModule = Module & {
+  lessons: CoursePlayerLesson[];
+};
+
+export type CoursePlayerExperience = {
+  course: Course;
+  modules: CoursePlayerModule[];
+  activeLesson: CoursePlayerLesson | null;
+  previousLessonId: string | null;
+  nextLessonId: string | null;
+  progress: ProductProgress;
+  completedLessonIds: string[];
+  hasAccess: boolean;
 };
 
 export type ParsedVideo =
