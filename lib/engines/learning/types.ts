@@ -3,6 +3,8 @@ import type { Product, ProductWithLessons } from "@/lib/engines/catalog/types";
 import type { Course, Lesson, Module } from "@/lib/courses/types";
 
 export type EnrollmentStatus = "active" | "expired" | "revoked";
+export type PaymentType = "free" | "transfer" | "dimo" | "mixed";
+export type PaymentProofStatus = "pending" | "approved" | "rejected";
 
 export type Enrollment = {
   id: string;
@@ -58,6 +60,33 @@ export type AdminEnrollment = Enrollment & {
   student: Profile | null;
 };
 
+export type CoursePaymentSettings = {
+  courseId: string;
+  paymentType: PaymentType;
+  dimoUrl: string | null;
+  transferBank: string | null;
+  transferClabe: string | null;
+  transferOwner: string | null;
+  paymentNotes: string | null;
+};
+
+export type StudentPaymentProof = {
+  id: string;
+  courseId: string;
+  imageUrl: string;
+  notes: string | null;
+  status: PaymentProofStatus;
+  reviewedBy: string | null;
+  reviewedAt: string | null;
+  createdAt: string;
+};
+
+export type AdminPaymentProof = StudentPaymentProof & {
+  userId: string;
+  student: Profile | null;
+  signedImageUrl: string;
+};
+
 export type LearningActionState = {
   status: "idle" | "success" | "error";
   message: string;
@@ -89,6 +118,8 @@ export type CoursePlayerExperience = {
   progress: ProductProgress;
   completedLessonIds: string[];
   hasAccess: boolean;
+  paymentSettings: CoursePaymentSettings;
+  paymentProofs: StudentPaymentProof[];
 };
 
 export type ParsedVideo =
