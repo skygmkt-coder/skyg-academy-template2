@@ -114,43 +114,100 @@ export type Database = {
         Row: {
           id: string;
           product_id: string;
+          module_id: string | null;
           title: string;
           slug: string;
           description: string | null;
           video_url: string | null;
           display_order: number;
           is_preview: boolean;
+          lesson_type: string;
+          duration_minutes: number | null;
+          status: string;
           created_at: string;
           updated_at: string;
         };
         Insert: {
           id?: string;
           product_id: string;
+          module_id?: string | null;
           title: string;
           slug: string;
           description?: string | null;
           video_url?: string | null;
           display_order?: number;
           is_preview?: boolean;
+          lesson_type?: string;
+          duration_minutes?: number | null;
+          status?: string;
           created_at?: string;
           updated_at?: string;
         };
         Update: {
           id?: string;
           product_id?: string;
+          module_id?: string | null;
           title?: string;
           slug?: string;
           description?: string | null;
           video_url?: string | null;
           display_order?: number;
           is_preview?: boolean;
+          lesson_type?: string;
+          duration_minutes?: number | null;
+          status?: string;
           created_at?: string;
           updated_at?: string;
         };
         Relationships: [
           {
+            foreignKeyName: "lessons_module_id_fkey";
+            columns: ["module_id"];
+            isOneToOne: false;
+            referencedRelation: "modules";
+            referencedColumns: ["id"];
+          },
+          {
             foreignKeyName: "lessons_product_id_fkey";
             columns: ["product_id"];
+            isOneToOne: false;
+            referencedRelation: "products";
+            referencedColumns: ["id"];
+          }
+        ];
+      };
+      modules: {
+        Row: {
+          id: string;
+          course_id: string;
+          title: string;
+          description: string | null;
+          display_order: number;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          course_id: string;
+          title: string;
+          description?: string | null;
+          display_order?: number;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          course_id?: string;
+          title?: string;
+          description?: string | null;
+          display_order?: number;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "modules_course_id_fkey";
+            columns: ["course_id"];
             isOneToOne: false;
             referencedRelation: "products";
             referencedColumns: ["id"];
@@ -404,7 +461,21 @@ export type Database = {
         ];
       };
     };
-    Views: Record<string, never>;
+    Views: {
+      courses: {
+        Row: {
+          id: string;
+          title: string;
+          slug: string;
+          description: string | null;
+          cover_image_url: string | null;
+          is_published: boolean;
+          created_at: string;
+          updated_at: string;
+        };
+        Relationships: [];
+      };
+    };
     Functions: Record<string, never>;
     Enums: {
       app_role: AppRole;
