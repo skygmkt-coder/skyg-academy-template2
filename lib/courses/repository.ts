@@ -139,6 +139,50 @@ export async function createModule(input: { courseId: string; title: string }): 
   return mapModule(data);
 }
 
+export async function updateModuleTitle(input: {
+  courseId: string;
+  moduleId: string;
+  title: string;
+}): Promise<Module> {
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("modules")
+    .update({ title: input.title })
+    .eq("id", input.moduleId)
+    .eq("course_id", input.courseId)
+    .select(moduleColumns)
+    .single();
+
+  if (error) {
+    throw new Error(`Unable to update module title: ${error.message}`);
+  }
+
+  return mapModule(data);
+}
+
+export async function deleteModule(input: { courseId: string; moduleId: string }): Promise<void> {
+  const supabase = await createClient();
+  const { error: lessonsError } = await supabase
+    .from("lessons")
+    .delete()
+    .eq("product_id", input.courseId)
+    .eq("module_id", input.moduleId);
+
+  if (lessonsError) {
+    throw new Error(`Unable to delete module lessons: ${lessonsError.message}`);
+  }
+
+  const { error } = await supabase
+    .from("modules")
+    .delete()
+    .eq("id", input.moduleId)
+    .eq("course_id", input.courseId);
+
+  if (error) {
+    throw new Error(`Unable to delete module: ${error.message}`);
+  }
+}
+
 export async function createLesson(input: { courseId: string; moduleId: string; title: string }): Promise<Lesson> {
   const [module, lessons] = await Promise.all([
     getModuleById(input.moduleId),
@@ -189,6 +233,19 @@ export async function updateLessonTitle(input: {
   }
 
   return mapLesson(data);
+}
+
+export async function deleteLesson(input: { courseId: string; lessonId: string }): Promise<void> {
+  const supabase = await createClient();
+  const { error } = await supabase
+    .from("lessons")
+    .delete()
+    .eq("id", input.lessonId)
+    .eq("product_id", input.courseId);
+
+  if (error) {
+    throw new Error(`Unable to delete lesson: ${error.message}`);
+  }
 }
 
 async function listModules(courseId: string): Promise<Module[]> {
