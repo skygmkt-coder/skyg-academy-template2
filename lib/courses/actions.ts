@@ -1,11 +1,13 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { redirect } from "next/navigation";
 
 import { requireUser } from "@/lib/engines/auth/helpers";
 import { stringFromForm } from "@/lib/courses/helpers";
 import { assertCourseOwner } from "@/lib/courses/ownership";
 import {
+  createCourseDraft,
   createLesson,
   createModule,
   deleteLesson,
@@ -16,7 +18,17 @@ import {
 } from "@/lib/courses/repository";
 import type { CourseContent } from "@/lib/courses/types";
 
-const courseEditorPath = "/admin/cursos/id";
+function courseEditorPath(courseId: string): string {
+  return `/admin/cursos/${courseId}`;
+}
+
+export async function createCourseDraftAction(): Promise<void> {
+  const auth = await requireUser();
+  const course = await createCourseDraft({ ownerId: auth.user.id, title: "Curso sin titulo" });
+
+  revalidatePath("/admin/cursos");
+  redirect(courseEditorPath(course.id));
+}
 
 export async function getCourseContentAction(courseId?: string): Promise<CourseContent | null> {
   const auth = await requireUser();
@@ -34,7 +46,8 @@ export async function createModuleAction(formData: FormData): Promise<CourseCont
 
   await assertCourseOwner(courseId, auth.user.id);
   await createModule({ courseId, title });
-  revalidatePath(courseEditorPath);
+  revalidatePath("/admin/cursos");
+  revalidatePath(courseEditorPath(courseId));
   return getCourseContent(courseId, auth.user.id);
 }
 
@@ -50,7 +63,8 @@ export async function updateModuleTitleAction(formData: FormData): Promise<Cours
 
   await assertCourseOwner(courseId, auth.user.id);
   await updateModuleTitle({ courseId, moduleId, title });
-  revalidatePath(courseEditorPath);
+  revalidatePath("/admin/cursos");
+  revalidatePath(courseEditorPath(courseId));
   return getCourseContent(courseId, auth.user.id);
 }
 
@@ -65,7 +79,8 @@ export async function deleteModuleAction(formData: FormData): Promise<CourseCont
 
   await assertCourseOwner(courseId, auth.user.id);
   await deleteModule({ courseId, moduleId });
-  revalidatePath(courseEditorPath);
+  revalidatePath("/admin/cursos");
+  revalidatePath(courseEditorPath(courseId));
   return getCourseContent(courseId, auth.user.id);
 }
 
@@ -81,7 +96,8 @@ export async function createLessonAction(formData: FormData): Promise<CourseCont
 
   await assertCourseOwner(courseId, auth.user.id);
   await createLesson({ courseId, moduleId, title });
-  revalidatePath(courseEditorPath);
+  revalidatePath("/admin/cursos");
+  revalidatePath(courseEditorPath(courseId));
   return getCourseContent(courseId, auth.user.id);
 }
 
@@ -97,7 +113,7 @@ export async function updateLessonTitleAction(formData: FormData): Promise<Cours
 
   await assertCourseOwner(courseId, auth.user.id);
   await updateLessonTitle({ courseId, lessonId, title });
-  revalidatePath(courseEditorPath);
+  revalidatePath(courseEditorPath(courseId));
   return getCourseContent(courseId, auth.user.id);
 }
 
@@ -112,6 +128,7 @@ export async function deleteLessonAction(formData: FormData): Promise<CourseCont
 
   await assertCourseOwner(courseId, auth.user.id);
   await deleteLesson({ courseId, lessonId });
-  revalidatePath(courseEditorPath);
+  revalidatePath("/admin/cursos");
+  revalidatePath(courseEditorPath(courseId));
   return getCourseContent(courseId, auth.user.id);
 }

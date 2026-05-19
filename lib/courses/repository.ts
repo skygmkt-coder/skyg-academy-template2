@@ -1,6 +1,6 @@
 import { createClient } from "@/lib/supabase/server";
 import { slugifyTitle } from "@/lib/courses/helpers";
-import type { Course, CourseContent, Lesson, Module } from "@/lib/courses/types";
+import type { AdminCourseSummary, Course, CourseContent, Lesson, Module } from "@/lib/courses/types";
 
 type CourseRow = {
   id: string;
@@ -89,6 +89,71 @@ function mapLesson(row: LessonRow): Lesson {
     createdAt: row.created_at,
     updatedAt: row.updated_at
   };
+}
+
+export async function listOwnedCourseSummaries(ownerId: string): Promise<AdminCourseSummary[]> {
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("courses")
+    .select(courseColumns)
+    .eq("creator_id", ownerId)
+    .order("created_at", { ascending: false });
+
+  if (error) {
+    throw new Error(`Unable to list courses: ${error.message}`);
+  }
+
+  const courses = (data as CourseRow[]).map(mapCourse);
+  const courseIds = courses.map((course) => course.id);
+
+  if (courseIds.length === 0) {
+    return [];
+  }
+
+  const [modulesResult, lessonsResult] = await Promise.all([
+    supabase.from("modules").select("id,course_id").in("course_id", courseIds),
+    supabase.from("lessons").select("id,product_id").in("product_id", courseIds)
+  ]);
+
+  if (modulesResult.error) {
+    throw new Error(`Unable to count modules: ${modulesResult.error.message}`);
+  }
+
+  if (lessonsResult.error) {
+    throw new Error(`Unable to count lessons: ${lessonsResult.error.message}`);
+  }
+
+  const moduleCounts = countByKey(modulesResult.data, "course_id");
+  const lessonCounts = countByKey(lessonsResult.data, "product_id");
+
+  return courses.map((course) => ({
+    ...course,
+    moduleCount: moduleCounts.get(course.id) ?? 0,
+    lessonCount: lessonCounts.get(course.id) ?? 0
+  }));
+}
+
+export async function createCourseDraft(input: { ownerId: string; title: string }): Promise<Course> {
+  const normalizedTitle = input.title.trim();
+  const slug = `${slugifyTitle(normalizedTitle)}-${Date.now().toString(36)}`;
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("products")
+    .insert({
+      creator_id: input.ownerId,
+      title: normalizedTitle,
+      slug,
+      type: "curso",
+      is_published: false
+    })
+    .select(courseColumns)
+    .single();
+
+  if (error) {
+    throw new Error(`Unable to create course: ${error.message}`);
+  }
+
+  return mapCourse(data as CourseRow);
 }
 
 export async function getCourseContent(courseId?: string, ownerId?: string): Promise<CourseContent | null> {
@@ -320,4 +385,15 @@ function nextLessonSlug(title: string, lessons: Lesson[]): string {
   }
 
   return `${baseSlug}-${suffix}`;
+}
+
+function countByKey<T extends Record<string, string>>(rows: T[] | null, key: keyof T): Map<string, number> {
+  const counts = new Map<string, number>();
+
+  rows?.forEach((row) => {
+    const value = row[key];
+    counts.set(value, (counts.get(value) ?? 0) + 1);
+  });
+
+  return counts;
 }
