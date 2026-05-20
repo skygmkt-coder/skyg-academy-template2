@@ -3,17 +3,9 @@ import crypto from "node:crypto";
 import { createClient } from "@/lib/supabase/server";
 import { requireAdmin } from "@/lib/engines/auth/helpers";
 import type { SignedUploadInput } from "@/lib/engines/catalog/validation";
+import { EXTENSION_BY_CONTENT_TYPE, STORAGE_BUCKETS } from "@/src/config";
 
-const bucket = "catalog-assets";
-
-const extensionByContentType: Record<string, string> = {
-  "image/jpeg": "jpg",
-  "image/png": "png",
-  "image/webp": "webp",
-  "application/pdf": "pdf",
-  "application/zip": "zip",
-  "text/plain": "txt"
-};
+const bucket = STORAGE_BUCKETS.CATALOG_ASSETS;
 
 export async function createSignedCatalogUpload(input: SignedUploadInput): Promise<{
   bucket: string;
@@ -25,7 +17,7 @@ export async function createSignedCatalogUpload(input: SignedUploadInput): Promi
   await requireAdmin();
 
   const supabase = await createClient();
-  const extension = extensionByContentType[input.contentType];
+  const extension = EXTENSION_BY_CONTENT_TYPE[input.contentType];
 
   if (!extension) {
     throw new Error("Tipo de archivo no permitido.");

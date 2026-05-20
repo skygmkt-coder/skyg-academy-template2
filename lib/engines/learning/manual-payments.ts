@@ -10,6 +10,7 @@ import type {
 } from "@/lib/engines/learning/types";
 import type { UpdateCoursePaymentSettingsInput } from "@/lib/engines/learning/validation";
 import { createClient } from "@/lib/supabase/server";
+import { COURSE_PAYMENT_TYPES, PAYMENT_PROVIDERS, PAYMENT_PROOF_STATUSES } from "@/src/config";
 
 type QueryBuilder = {
   select: (columns: string) => QueryBuilder;
@@ -211,7 +212,7 @@ export async function approveCoursePaymentProof(input: {
     userId: proof.user_id,
     enrolledBy: input.auth.user.id,
     expiresAt: null,
-    paymentProvider: "manual-proof",
+    paymentProvider: PAYMENT_PROVIDERS.MANUAL_PROOF,
     paymentReference: input.proofId
   });
 }
@@ -251,8 +252,8 @@ export async function enrollFreeCourse(auth: AuthenticatedUser, courseId: string
     userId: auth.user.id,
     enrolledBy: auth.user.id,
     expiresAt: null,
-    paymentProvider: "free",
-    paymentReference: "self-enrollment"
+    paymentProvider: PAYMENT_PROVIDERS.FREE,
+    paymentReference: PAYMENT_PROVIDERS.SELF_ENROLLMENT
   });
 }
 
@@ -302,12 +303,12 @@ function mapStudentProof(row: PaymentProofRow): StudentPaymentProof {
 }
 
 function normalizePaymentType(value: string | null): PaymentType {
-  if (value === "transfer" || value === "dimo" || value === "mixed") return value;
+  if (COURSE_PAYMENT_TYPES.includes(value as PaymentType) && value !== "free") return value as PaymentType;
   return "free";
 }
 
 function normalizePaymentProofStatus(value: string): PaymentProofStatus {
-  if (value === "approved" || value === "rejected") return value;
+  if (PAYMENT_PROOF_STATUSES.includes(value as PaymentProofStatus) && value !== "pending") return value as PaymentProofStatus;
   return "pending";
 }
 
