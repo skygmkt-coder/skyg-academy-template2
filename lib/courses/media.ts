@@ -29,9 +29,9 @@ type UntypedClient = {
   from: (table: string) => QueryBuilder;
 };
 
-const imageTypes = STORAGE_MIME_TYPES.IMAGES;
-const resourceTypes = [...STORAGE_MIME_TYPES.DOCUMENTS, ...imageTypes];
-const mediaTypes = [...STORAGE_MIME_TYPES.VIDEOS, "application/pdf", ...imageTypes];
+const imageTypes: readonly string[] = STORAGE_MIME_TYPES.IMAGES;
+const resourceTypes: readonly string[] = [...STORAGE_MIME_TYPES.DOCUMENTS, ...imageTypes];
+const mediaTypes: readonly string[] = [...STORAGE_MIME_TYPES.VIDEOS, "application/pdf", ...imageTypes];
 
 export async function createSignedCourseMediaUpload(input: SignedCourseMediaInput): Promise<{
   bucket: string;
