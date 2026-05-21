@@ -10,9 +10,9 @@ type CourseRow = {
   slug: string;
   description: string | null;
   cover_image_url: string | null;
-  cover_image_path: string | null;
+  cover_image_path?: string | null;
   thumbnail_url: string | null;
-  thumbnail_path: string | null;
+  thumbnail_path?: string | null;
   is_published: boolean;
   created_at: string;
   updated_at: string;
@@ -62,7 +62,15 @@ type LessonResourceRow = {
   updated_at: string;
 };
 
+type SupabaseQueryError = {
+  message: string;
+  code?: string;
+  details?: string;
+  hint?: string;
+};
+
 const courseColumns = "id,creator_id,title,slug,description,cover_image_url,cover_image_path,thumbnail_url,thumbnail_path,is_published,created_at,updated_at";
+const legacyCourseColumns = "id,creator_id,title,slug,description,cover_image_url,thumbnail_url,is_published,created_at,updated_at";
 const moduleColumns = "id,course_id,title,description,display_order,created_at,updated_at";
 const lessonColumns =
   "id,product_id,module_id,title,slug,description,video_url,media_bucket,media_path,media_kind,display_order,is_preview,lesson_type,duration_minutes,status,created_at,updated_at";
@@ -76,9 +84,9 @@ function mapCourse(row: CourseRow): Course {
     slug: row.slug,
     description: row.description,
     coverImageUrl: row.cover_image_url,
-    coverImagePath: row.cover_image_path,
+    coverImagePath: row.cover_image_path ?? null,
     thumbnailUrl: row.thumbnail_url,
-    thumbnailPath: row.thumbnail_path,
+    thumbnailPath: row.thumbnail_path ?? null,
     isPublished: row.is_published,
     createdAt: row.created_at,
     updatedAt: row.updated_at
@@ -138,11 +146,21 @@ function mapResource(row: LessonResourceRow, courseId: string): LessonResource {
 
 export async function listOwnedCourseSummaries(ownerId: string): Promise<AdminCourseSummary[]> {
   const supabase = await createClient();
-  const { data, error } = await supabase
+  let { data, error } = await supabase
     .from("courses")
     .select(courseColumns)
     .eq("creator_id", ownerId)
     .order("created_at", { ascending: false });
+
+  if (isMissingCourseMediaPathColumn(error)) {
+    const fallback = await supabase
+      .from("courses")
+      .select(legacyCourseColumns)
+      .eq("creator_id", ownerId)
+      .order("created_at", { ascending: false });
+    data = fallback.data;
+    error = fallback.error;
+  }
 
   if (error) throw new Error(`Unable to list courses: ${error.message}`);
 
@@ -171,7 +189,7 @@ export async function createCourseDraft(input: { ownerId: string; title: string 
   const { data, error } = await supabase
     .from("products")
     .insert({ creator_id: input.ownerId, title: normalizedTitle, slug, type: "curso", is_published: false })
-    .select(courseColumns)
+    .select(legacyCourseColumns)
     .single();
 
   if (error) throw new Error(`Unable to create course: ${error.message}`);
@@ -183,9 +201,19 @@ export async function getCourseContent(courseId?: string, ownerId?: string): Pro
   let courseQuery = supabase.from("courses").select(courseColumns);
   if (ownerId) courseQuery = courseQuery.eq("creator_id", ownerId);
 
-  const { data: courseRow, error: courseError } = courseId
+  let { data: courseRow, error: courseError } = courseId
     ? await courseQuery.eq("id", courseId).maybeSingle()
     : await courseQuery.order("created_at", { ascending: false }).limit(1).maybeSingle();
+
+  if (isMissingCourseMediaPathColumn(courseError)) {
+    let legacyCourseQuery = supabase.from("courses").select(legacyCourseColumns);
+    if (ownerId) legacyCourseQuery = legacyCourseQuery.eq("creator_id", ownerId);
+    const fallback = courseId
+      ? await legacyCourseQuery.eq("id", courseId).maybeSingle()
+      : await legacyCourseQuery.order("created_at", { ascending: false }).limit(1).maybeSingle();
+    courseRow = fallback.data;
+    courseError = fallback.error;
+  }
 
   if (courseError) throw new Error(`Unable to load course: ${courseError.message}`);
   if (!courseRow) return null;
@@ -305,7 +333,23 @@ export async function updateCourseMedia(input: { courseId: string; thumbnailUrl?
   if (input.thumbnailPath !== undefined) update.thumbnail_path = input.thumbnailPath;
   if (input.coverImageUrl !== undefined) update.cover_image_url = input.coverImageUrl;
   if (input.coverImagePath !== undefined) update.cover_image_path = input.coverImagePath;
-  const { data, error } = await supabase.from("products").update(update).eq("id", input.courseId).eq("type", "curso").select(courseColumns).single();
+
+  let { data, error } = await supabase.from("products").update(update).eq("id", input.courseId).eq("type", "curso").select(courseColumns).single();
+
+  if (isMissingCourseMediaPathColumn(error)) {
+    const legacyUpdate: Record<string, unknown> = {};
+    if (input.thumbnailUrl !== undefined) legacyUpdate.thumbnail_url = input.thumbnailUrl;
+    if (input.coverImageUrl !== undefined) legacyUpdate.cover_image_url = input.coverImageUrl;
+
+    if (Object.keys(legacyUpdate).length === 0) {
+      throw new Error("Unable to update course media: course media path columns are not available in the database schema.");
+    }
+
+    const fallback = await supabase.from("products").update(legacyUpdate).eq("id", input.courseId).eq("type", "curso").select(legacyCourseColumns).single();
+    data = fallback.data;
+    error = fallback.error;
+  }
+
   if (error) throw new Error(`Unable to update course media: ${error.message}`);
   return mapCourse(data as CourseRow);
 }
@@ -391,4 +435,13 @@ function normalizeMediaKind(value: string | null): Lesson["mediaKind"] {
   if (value === "pdf" || value === "image" || value === "external") return value;
   if (value === "video") return "video";
   return null;
+}
+
+function isMissingCourseMediaPathColumn(error: SupabaseQueryError | null): boolean {
+  if (!error) return false;
+  const message = [error.message, error.details, error.hint].filter(Boolean).join(" ").toLowerCase();
+  return (
+    (message.includes("cover_image_path") || message.includes("thumbnail_path")) &&
+    (message.includes("does not exist") || message.includes("could not find") || message.includes("schema cache"))
+  );
 }
