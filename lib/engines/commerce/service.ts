@@ -17,6 +17,7 @@ import {
 import type { CheckoutIntent, PaymentStatus, PaymentWithOrder, StudentPayment } from "@/lib/engines/commerce/types";
 import type { PaymentProofUploadInput, SubmitManualPaymentInput } from "@/lib/engines/commerce/validation";
 import { EXTENSION_BY_CONTENT_TYPE, STORAGE_BUCKETS, STORAGE_SIGNED_URL_TTL_SECONDS } from "@/src/config";
+import { recordAuditEvent } from "@/src/audit";
 
 const proofBucket = STORAGE_BUCKETS.PAYMENT_PROOFS;
 
@@ -78,6 +79,21 @@ export async function approveManualPayment(input: { paymentId: string; adminId: 
   if (result.paymentId !== input.paymentId || result.orderId !== paymentForApproval.orderId) {
     throw new Error("No pudimos validar la aprobacion transaccional del pago.");
   }
+
+  await recordAuditEvent({
+    eventType: "payment.approve",
+    actorUserId: input.adminId,
+    targetType: "payment",
+    targetId: input.paymentId,
+    courseId: paymentForApproval.order.product?.id ?? paymentForApproval.order.productId,
+    metadata: {
+      orderId: paymentForApproval.orderId,
+      productId: paymentForApproval.order.productId,
+      studentUserId: paymentForApproval.order.userId,
+      method: paymentForApproval.method,
+      totalMxnCents: paymentForApproval.order.totalMxnCents
+    }
+  });
 }
 
 export async function rejectManualPayment(input: { paymentId: string; reason: string }): Promise<void> {

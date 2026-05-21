@@ -5,6 +5,7 @@ import { requireUser } from "@/lib/engines/auth/helpers";
 import { canManageCourseEnrollment, checkCourseAccess } from "@/lib/engines/learning/enrollments";
 import { createClient } from "@/lib/supabase/server";
 import { APP_ROUTES, EXTENSION_BY_CONTENT_TYPE, STORAGE_BUCKETS, STORAGE_MIME_TYPES, STORAGE_SIGNED_URL_TTL_SECONDS, STORAGE_UPLOAD_LIMITS } from "@/src/config";
+import { recordAuditEvent } from "@/src/audit";
 
 export type CourseMediaIntent = "course-thumbnail" | "course-cover" | "lesson-resource" | "lesson-media";
 export type MediaKind = "video" | "pdf" | "image" | "external";
@@ -57,6 +58,21 @@ export async function createSignedCourseMediaUpload(input: SignedCourseMediaInpu
   const publicUrl = bucket === STORAGE_BUCKETS.COURSE_THUMBNAILS ? supabase.storage.from(bucket).getPublicUrl(path).data.publicUrl : null;
   const mediaUrl = publicUrl ?? protectedMediaUrl({ bucket, path, courseId: input.courseId, lessonId: input.lessonId });
 
+  await recordAuditEvent({
+    eventType: "media.upload.signed",
+    actorUserId: auth.user.id,
+    targetType: "media",
+    targetId: path,
+    courseId: input.courseId,
+    metadata: {
+      bucket,
+      intent: input.intent,
+      lessonId: input.lessonId ?? null,
+      contentType: input.contentType,
+      size: input.size ?? null
+    }
+  });
+
   return { bucket, path, token: data.token, signedUrl: data.signedUrl, publicUrl, mediaUrl };
 }
 
@@ -91,6 +107,17 @@ export async function deleteMedia(input: { auth: AuthenticatedUser; courseId: st
   if (error) {
     throw new Error(`No pudimos eliminar el archivo: ${error.message}`);
   }
+
+  await recordAuditEvent({
+    eventType: "media.delete",
+    actorUserId: input.auth.user.id,
+    targetType: "media",
+    targetId: input.path,
+    courseId: input.courseId,
+    metadata: {
+      bucket: input.bucket
+    }
+  });
 }
 
 export function protectedMediaUrl(input: { bucket: string; path: string; courseId: string; lessonId?: string }): string {
