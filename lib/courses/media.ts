@@ -166,12 +166,20 @@ function validateUpload(input: SignedCourseMediaInput): void {
   const extension = EXTENSION_BY_CONTENT_TYPE[input.contentType];
   if (!extension) throw new Error("Tipo de archivo no permitido.");
   if ((input.size ?? 0) > maxSizeForIntent(input.intent)) throw new Error("El archivo excede el limite permitido.");
-
-  const allowed = input.intent === "lesson-media" ? mediaTypes : input.intent === "lesson-resource" ? resourceTypes : imageTypes;
-  if (!allowed.includes(input.contentType as (typeof allowed)[number])) throw new Error("Tipo de archivo no permitido para este destino.");
+  if (!isAllowedContentTypeForIntent(input.intent, input.contentType)) throw new Error("Tipo de archivo no permitido para este destino.");
   if ((input.intent === "lesson-resource" || input.intent === "lesson-media") && !input.lessonId) {
     throw new Error("La leccion es obligatoria para subir media.");
   }
+}
+
+function isAllowedContentTypeForIntent(intent: CourseMediaIntent, contentType: string): boolean {
+  return allowedContentTypesForIntent(intent).includes(contentType);
+}
+
+function allowedContentTypesForIntent(intent: CourseMediaIntent): readonly string[] {
+  if (intent === "lesson-media") return mediaTypes;
+  if (intent === "lesson-resource") return resourceTypes;
+  return imageTypes;
 }
 
 function maxSizeForIntent(intent: CourseMediaIntent): number {
