@@ -11,6 +11,7 @@ import type {
 import type { UpdateCoursePaymentSettingsInput } from "@/lib/engines/learning/validation";
 import { createClient } from "@/lib/supabase/server";
 import { COURSE_PAYMENT_TYPES, PAYMENT_PROVIDERS, PAYMENT_PROOF_STATUSES } from "@/src/config";
+import { recordAuditEvent } from "@/src/audit";
 
 type QueryBuilder = {
   select: (columns: string) => QueryBuilder;
@@ -214,6 +215,18 @@ export async function approveCoursePaymentProof(input: {
     expiresAt: null,
     paymentProvider: PAYMENT_PROVIDERS.MANUAL_PROOF,
     paymentReference: input.proofId
+  });
+
+  await recordAuditEvent({
+    eventType: "course_payment_proof.approve",
+    actorUserId: input.auth.user.id,
+    targetType: "payment_proof",
+    targetId: input.proofId,
+    courseId: input.courseId,
+    metadata: {
+      studentUserId: proof.user_id,
+      imageUrl: proof.image_url
+    }
   });
 }
 
