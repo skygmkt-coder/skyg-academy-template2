@@ -168,7 +168,7 @@ function validateUpload(input: SignedCourseMediaInput): void {
   if ((input.size ?? 0) > maxSizeForIntent(input.intent)) throw new Error("El archivo excede el limite permitido.");
 
   const allowed = input.intent === "lesson-media" ? mediaTypes : input.intent === "lesson-resource" ? resourceTypes : imageTypes;
-  if (!allowed.includes(input.contentType)) throw new Error("Tipo de archivo no permitido para este destino.");
+  if (!allowed.includes(input.contentType as (typeof allowed)[number])) throw new Error("Tipo de archivo no permitido para este destino.");
   if ((input.intent === "lesson-resource" || input.intent === "lesson-media") && !input.lessonId) {
     throw new Error("La leccion es obligatoria para subir media.");
   }
