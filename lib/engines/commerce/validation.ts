@@ -1,6 +1,8 @@
 import { z } from "zod";
 
-export const paymentMethodSchema = z.enum(["transferencia", "dimo"]);
+import { CHECKOUT_PAYMENT_METHODS, STORAGE_MIME_TYPES, STORAGE_UPLOAD_LIMITS } from "@/src/config";
+
+export const paymentMethodSchema = z.enum(CHECKOUT_PAYMENT_METHODS);
 
 export const submitManualPaymentSchema = z.object({
   productId: z.string().uuid(),
@@ -18,12 +20,7 @@ export const rejectPaymentSchema = z.object({
   rejectionReason: z.string().trim().min(3, "Agrega un motivo").max(500)
 });
 
-const paymentProofContentTypes = [
-  "image/jpeg",
-  "image/png",
-  "image/webp",
-  "application/pdf"
-] as const;
+const paymentProofContentTypes = STORAGE_MIME_TYPES.PAYMENT_PROOFS;
 
 const paymentProofExtensions = ["jpg", "jpeg", "png", "webp", "pdf"] as const;
 
@@ -37,7 +34,7 @@ export const paymentProofUploadSchema = z
     contentType: z.enum(paymentProofContentTypes, {
       errorMap: () => ({ message: "Formato de comprobante no permitido" })
     }),
-    size: z.number().int().positive().max(10 * 1024 * 1024).optional()
+    size: z.number().int().positive().max(STORAGE_UPLOAD_LIMITS.PAYMENT_PROOF_BYTES).optional()
   })
   .superRefine((value, context) => {
     const extension = extensionFromFileName(value.fileName);

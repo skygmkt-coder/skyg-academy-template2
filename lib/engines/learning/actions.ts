@@ -74,7 +74,7 @@ export async function grantEnrollmentAction(
 }
 
 export async function revokeEnrollmentAction(formData: FormData): Promise<void> {
-  await requireAdmin();
+  const auth = await requireAdmin();
   const parsed = revokeEnrollmentSchema.safeParse({
     productId: stringFromForm(formData, "productId"),
     enrollmentId: stringFromForm(formData, "enrollmentId")
@@ -84,7 +84,7 @@ export async function revokeEnrollmentAction(formData: FormData): Promise<void> 
     throw new Error("Enrollment invalido.");
   }
 
-  await revokeManualEnrollment(parsed.data);
+  await revokeManualEnrollment(parsed.data, auth.user.id);
   revalidatePath(`/admin/productos/${parsed.data.productId}`);
   revalidatePath("/mis-productos");
 }
@@ -183,7 +183,7 @@ export async function revokeCourseAccessAction(formData: FormData): Promise<void
     throw new Error("No tienes permisos para revocar acceso de este curso.");
   }
 
-  await revokeCourseAccess(parsed.data);
+  await revokeCourseAccess({ ...parsed.data, revokedBy: auth.user.id });
   revalidatePath(`/admin/cursos/${parsed.data.courseId}`);
   revalidatePath(`/learn/${parsed.data.courseId}`);
   revalidatePath("/mis-productos");

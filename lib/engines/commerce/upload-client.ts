@@ -1,9 +1,10 @@
 "use client";
 
 import { createClient } from "@/lib/supabase/client";
+import { APP_ROUTES } from "@/src/config";
 
 export async function uploadPaymentProof(file: File): Promise<string> {
-  const response = await fetch("/api/uploads/payment-proof", {
+  const response = await fetch(APP_ROUTES.uploadPaymentProof, {
     method: "POST",
     headers: { "content-type": "application/json" },
     body: JSON.stringify({ fileName: file.name, contentType: file.type, size: file.size })

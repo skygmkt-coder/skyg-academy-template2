@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 
 import { createSignedCourseMediaUpload } from "@/lib/courses/media";
+import { readJsonBody, routeErrorResponse, validationErrorResponse } from "@/src/errors";
 
 export const runtime = "nodejs";
 
@@ -15,19 +16,19 @@ const uploadSchema = z.object({
 });
 
 export async function POST(request: Request) {
-  const body: unknown = await request.json();
-  const parsed = uploadSchema.safeParse(body);
-
-  if (!parsed.success) {
-    return NextResponse.json({ message: "Payload invalido." }, { status: 400 });
-  }
-
   try {
+    const body = await readJsonBody(request);
+    const parsed = uploadSchema.safeParse(body);
+
+    if (!parsed.success) {
+      return validationErrorResponse("Payload invalido.");
+    }
+
     return NextResponse.json(await createSignedCourseMediaUpload(parsed.data));
   } catch (error) {
-    return NextResponse.json(
-      { message: error instanceof Error ? error.message : "No pudimos crear la carga." },
-      { status: 500 }
-    );
+    return routeErrorResponse(error, {
+      context: { route: "POST /api/uploads/course-media" },
+      fallbackMessage: "No pudimos crear la carga."
+    });
   }
 }

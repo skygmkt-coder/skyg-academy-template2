@@ -16,15 +16,10 @@ import {
 } from "@/lib/engines/commerce/repository";
 import type { CheckoutIntent, PaymentStatus, PaymentWithOrder, StudentPayment } from "@/lib/engines/commerce/types";
 import type { PaymentProofUploadInput, SubmitManualPaymentInput } from "@/lib/engines/commerce/validation";
+import { EXTENSION_BY_CONTENT_TYPE, STORAGE_BUCKETS, STORAGE_SIGNED_URL_TTL_SECONDS } from "@/src/config";
+import { recordAuditEvent } from "@/src/audit";
 
-const proofBucket = "payment-proofs";
-
-const proofExtensionByContentType: Record<string, string> = {
-  "image/jpeg": "jpg",
-  "image/png": "png",
-  "image/webp": "webp",
-  "application/pdf": "pdf"
-};
+const proofBucket = STORAGE_BUCKETS.PAYMENT_PROOFS;
 
 export async function getCheckoutIntent(auth: AuthenticatedUser, slug: string): Promise<CheckoutIntent | null> {
   const product = await getPublicProductPage(slug);
@@ -84,6 +79,21 @@ export async function approveManualPayment(input: { paymentId: string; adminId: 
   if (result.paymentId !== input.paymentId || result.orderId !== paymentForApproval.orderId) {
     throw new Error("No pudimos validar la aprobacion transaccional del pago.");
   }
+
+  await recordAuditEvent({
+    eventType: "payment.approve",
+    actorUserId: input.adminId,
+    targetType: "payment",
+    targetId: input.paymentId,
+    courseId: paymentForApproval.order.product?.id ?? paymentForApproval.order.productId,
+    metadata: {
+      orderId: paymentForApproval.orderId,
+      productId: paymentForApproval.order.productId,
+      studentUserId: paymentForApproval.order.userId,
+      method: paymentForApproval.method,
+      totalMxnCents: paymentForApproval.order.totalMxnCents
+    }
+  });
 }
 
 export async function rejectManualPayment(input: { paymentId: string; reason: string }): Promise<void> {
@@ -101,7 +111,7 @@ export async function createSignedPaymentProofUpload(auth: AuthenticatedUser, in
   proofUrl: string;
 }> {
   const supabase = await createClient();
-  const extension = proofExtensionByContentType[input.contentType];
+  const extension = EXTENSION_BY_CONTENT_TYPE[input.contentType];
 
   if (!extension) {
     throw new Error("Formato de comprobante no permitido.");
@@ -115,7 +125,7 @@ export async function createSignedPaymentProofUpload(auth: AuthenticatedUser, in
 
 export async function createSignedPaymentProofReadUrl(path: string): Promise<string> {
   const supabase = await createClient();
-  const { data, error } = await supabase.storage.from(proofBucket).createSignedUrl(path, 300);
+  const { data, error } = await supabase.storage.from(proofBucket).createSignedUrl(path, STORAGE_SIGNED_URL_TTL_SECONDS.PAYMENT_PROOF);
   if (error || !data) return "#";
   return data.signedUrl;
 }

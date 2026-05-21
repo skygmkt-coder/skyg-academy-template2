@@ -25,6 +25,7 @@ import type {
   GrantEnrollmentInput,
   RevokeEnrollmentInput
 } from "@/lib/engines/learning/validation";
+import { recordAuditEvent } from "@/src/audit";
 
 export async function listStudentProducts(auth: AuthenticatedUser): Promise<StudentProductAccess[]> {
   const enrollments = await listActiveEnrollmentsForUser(auth.user.id);
@@ -135,15 +136,40 @@ export async function grantManualEnrollment(input: GrantEnrollmentInput, granted
     throw new Error("No pudimos validar el acceso activo.");
   }
 
+  await recordAuditEvent({
+    eventType: "enrollment.grant",
+    actorUserId: grantedBy,
+    targetType: "enrollment",
+    targetId: enrollment.id,
+    courseId: input.productId,
+    metadata: {
+      targetUserId: input.userId,
+      grantedReason: input.grantedReason,
+      expiresAt: input.expiresAt
+    }
+  });
+
   return enrollment;
 }
 
-export async function revokeManualEnrollment(input: RevokeEnrollmentInput): Promise<Enrollment> {
+export async function revokeManualEnrollment(input: RevokeEnrollmentInput, revokedBy?: string | null): Promise<Enrollment> {
   const enrollment = await revokeEnrollment(input.enrollmentId);
 
   if (enrollment.status !== "revoked") {
     throw new Error("No pudimos validar la revocacion.");
   }
+
+  await recordAuditEvent({
+    eventType: "enrollment.revoke",
+    actorUserId: revokedBy,
+    targetType: "enrollment",
+    targetId: enrollment.id,
+    courseId: enrollment.productId,
+    metadata: {
+      targetUserId: enrollment.userId,
+      previousStatus: "active"
+    }
+  });
 
   return enrollment;
 }
@@ -249,6 +275,19 @@ export async function unlockEnrollmentFromCommerce(input: {
   if (!validated || validated.id !== enrollment.id) {
     throw new Error("No pudimos validar el desbloqueo del producto.");
   }
+
+  await recordAuditEvent({
+    eventType: "enrollment.grant",
+    actorUserId: input.grantedBy,
+    targetType: "enrollment",
+    targetId: enrollment.id,
+    courseId: input.productId,
+    metadata: {
+      targetUserId: input.userId,
+      grantedReason: input.grantedReason,
+      source: "commerce"
+    }
+  });
 
   return enrollment;
 }

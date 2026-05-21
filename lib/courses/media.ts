@@ -4,6 +4,8 @@ import type { AuthenticatedUser } from "@/lib/engines/auth/types";
 import { requireUser } from "@/lib/engines/auth/helpers";
 import { canManageCourseEnrollment, checkCourseAccess } from "@/lib/engines/learning/enrollments";
 import { createClient } from "@/lib/supabase/server";
+import { APP_ROUTES, EXTENSION_BY_CONTENT_TYPE, STORAGE_BUCKETS, STORAGE_MIME_TYPES, STORAGE_SIGNED_URL_TTL_SECONDS, STORAGE_UPLOAD_LIMITS } from "@/src/config";
+import { recordAuditEvent } from "@/src/audit";
 
 export type CourseMediaIntent = "course-thumbnail" | "course-cover" | "lesson-resource" | "lesson-media";
 export type MediaKind = "video" | "pdf" | "image" | "external";
@@ -27,20 +29,9 @@ type UntypedClient = {
   from: (table: string) => QueryBuilder;
 };
 
-const imageTypes = ["image/jpeg", "image/png", "image/webp"];
-const resourceTypes = ["application/pdf", "application/zip", "text/plain", ...imageTypes];
-const mediaTypes = ["video/mp4", "video/webm", "application/pdf", ...imageTypes];
-
-const extensionByContentType: Record<string, string> = {
-  "image/jpeg": "jpg",
-  "image/png": "png",
-  "image/webp": "webp",
-  "application/pdf": "pdf",
-  "application/zip": "zip",
-  "text/plain": "txt",
-  "video/mp4": "mp4",
-  "video/webm": "webm"
-};
+const imageTypes = STORAGE_MIME_TYPES.IMAGES;
+const resourceTypes = [...STORAGE_MIME_TYPES.DOCUMENTS, ...imageTypes];
+const mediaTypes = [...STORAGE_MIME_TYPES.VIDEOS, "application/pdf", ...imageTypes];
 
 export async function createSignedCourseMediaUpload(input: SignedCourseMediaInput): Promise<{
   bucket: string;
@@ -56,7 +47,7 @@ export async function createSignedCourseMediaUpload(input: SignedCourseMediaInpu
 
   const supabase = await createClient();
   const bucket = bucketForIntent(input.intent);
-  const extension = extensionByContentType[input.contentType];
+  const extension = EXTENSION_BY_CONTENT_TYPE[input.contentType];
   const path = `${auth.user.id}/${input.courseId}/${input.lessonId ?? "course"}/${crypto.randomUUID()}.${extension}`;
   const { data, error } = await supabase.storage.from(bucket).createSignedUploadUrl(path);
 
@@ -64,8 +55,23 @@ export async function createSignedCourseMediaUpload(input: SignedCourseMediaInpu
     throw new Error(error?.message ?? "No pudimos preparar la carga del archivo.");
   }
 
-  const publicUrl = bucket === "course-thumbnails" ? supabase.storage.from(bucket).getPublicUrl(path).data.publicUrl : null;
+  const publicUrl = bucket === STORAGE_BUCKETS.COURSE_THUMBNAILS ? supabase.storage.from(bucket).getPublicUrl(path).data.publicUrl : null;
   const mediaUrl = publicUrl ?? protectedMediaUrl({ bucket, path, courseId: input.courseId, lessonId: input.lessonId });
+
+  await recordAuditEvent({
+    eventType: "media.upload.signed",
+    actorUserId: auth.user.id,
+    targetType: "media",
+    targetId: path,
+    courseId: input.courseId,
+    metadata: {
+      bucket,
+      intent: input.intent,
+      lessonId: input.lessonId ?? null,
+      contentType: input.contentType,
+      size: input.size ?? null
+    }
+  });
 
   return { bucket, path, token: data.token, signedUrl: data.signedUrl, publicUrl, mediaUrl };
 }
@@ -81,7 +87,7 @@ export async function createSignedMediaReadUrl(input: {
   }
 
   const supabase = await createClient();
-  const { data, error } = await supabase.storage.from(input.bucket).createSignedUrl(input.path, 300);
+  const { data, error } = await supabase.storage.from(input.bucket).createSignedUrl(input.path, STORAGE_SIGNED_URL_TTL_SECONDS.PROTECTED_MEDIA);
 
   if (error || !data) {
     throw new Error(error?.message ?? "No pudimos abrir el archivo.");
@@ -101,12 +107,23 @@ export async function deleteMedia(input: { auth: AuthenticatedUser; courseId: st
   if (error) {
     throw new Error(`No pudimos eliminar el archivo: ${error.message}`);
   }
+
+  await recordAuditEvent({
+    eventType: "media.delete",
+    actorUserId: input.auth.user.id,
+    targetType: "media",
+    targetId: input.path,
+    courseId: input.courseId,
+    metadata: {
+      bucket: input.bucket
+    }
+  });
 }
 
 export function protectedMediaUrl(input: { bucket: string; path: string; courseId: string; lessonId?: string }): string {
   const params = new URLSearchParams({ bucket: input.bucket, path: input.path, courseId: input.courseId });
   if (input.lessonId) params.set("lessonId", input.lessonId);
-  return `/api/media/download?${params.toString()}`;
+  return `${APP_ROUTES.mediaDownload}?${params.toString()}`;
 }
 
 export function mediaKindFromContentType(contentType: string): MediaKind {
@@ -140,13 +157,13 @@ async function assertCanManageCourseMedia(auth: AuthenticatedUser, courseId: str
 }
 
 function bucketForIntent(intent: CourseMediaIntent): string {
-  if (intent === "lesson-resource") return "lesson-resources";
-  if (intent === "lesson-media") return "lesson-media";
-  return "course-thumbnails";
+  if (intent === "lesson-resource") return STORAGE_BUCKETS.LESSON_RESOURCES;
+  if (intent === "lesson-media") return STORAGE_BUCKETS.LESSON_MEDIA;
+  return STORAGE_BUCKETS.COURSE_THUMBNAILS;
 }
 
 function validateUpload(input: SignedCourseMediaInput): void {
-  const extension = extensionByContentType[input.contentType];
+  const extension = EXTENSION_BY_CONTENT_TYPE[input.contentType];
   if (!extension) throw new Error("Tipo de archivo no permitido.");
   if ((input.size ?? 0) > maxSizeForIntent(input.intent)) throw new Error("El archivo excede el limite permitido.");
 
@@ -158,7 +175,7 @@ function validateUpload(input: SignedCourseMediaInput): void {
 }
 
 function maxSizeForIntent(intent: CourseMediaIntent): number {
-  if (intent === "lesson-media") return 500 * 1024 * 1024;
-  if (intent === "lesson-resource") return 50 * 1024 * 1024;
-  return 10 * 1024 * 1024;
+  if (intent === "lesson-media") return STORAGE_UPLOAD_LIMITS.LESSON_MEDIA_BYTES;
+  if (intent === "lesson-resource") return STORAGE_UPLOAD_LIMITS.LESSON_RESOURCE_BYTES;
+  return STORAGE_UPLOAD_LIMITS.COURSE_IMAGE_BYTES;
 }
