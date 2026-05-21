@@ -146,11 +146,13 @@ function mapResource(row: LessonResourceRow, courseId: string): LessonResource {
 
 export async function listOwnedCourseSummaries(ownerId: string): Promise<AdminCourseSummary[]> {
   const supabase = await createClient();
-  let { data, error } = await supabase
+  const primary = await supabase
     .from("courses")
     .select(courseColumns)
     .eq("creator_id", ownerId)
     .order("created_at", { ascending: false });
+  let data = primary.data as CourseRow[] | null;
+  let error: SupabaseQueryError | null = primary.error;
 
   if (isMissingCourseMediaPathColumn(error)) {
     const fallback = await supabase
@@ -158,13 +160,13 @@ export async function listOwnedCourseSummaries(ownerId: string): Promise<AdminCo
       .select(legacyCourseColumns)
       .eq("creator_id", ownerId)
       .order("created_at", { ascending: false });
-    data = fallback.data;
+    data = fallback.data as CourseRow[] | null;
     error = fallback.error;
   }
 
   if (error) throw new Error(`Unable to list courses: ${error.message}`);
 
-  const courses = (data as CourseRow[]).map(mapCourse);
+  const courses = (data ?? []).map(mapCourse);
   const courseIds = courses.map((course) => course.id);
   if (courseIds.length === 0) return [];
 
@@ -201,9 +203,11 @@ export async function getCourseContent(courseId?: string, ownerId?: string): Pro
   let courseQuery = supabase.from("courses").select(courseColumns);
   if (ownerId) courseQuery = courseQuery.eq("creator_id", ownerId);
 
-  let { data: courseRow, error: courseError } = courseId
+  const primary = courseId
     ? await courseQuery.eq("id", courseId).maybeSingle()
     : await courseQuery.order("created_at", { ascending: false }).limit(1).maybeSingle();
+  let courseRow = primary.data as CourseRow | null;
+  let courseError: SupabaseQueryError | null = primary.error;
 
   if (isMissingCourseMediaPathColumn(courseError)) {
     let legacyCourseQuery = supabase.from("courses").select(legacyCourseColumns);
@@ -211,14 +215,14 @@ export async function getCourseContent(courseId?: string, ownerId?: string): Pro
     const fallback = courseId
       ? await legacyCourseQuery.eq("id", courseId).maybeSingle()
       : await legacyCourseQuery.order("created_at", { ascending: false }).limit(1).maybeSingle();
-    courseRow = fallback.data;
+    courseRow = fallback.data as CourseRow | null;
     courseError = fallback.error;
   }
 
   if (courseError) throw new Error(`Unable to load course: ${courseError.message}`);
   if (!courseRow) return null;
 
-  const course = mapCourse(courseRow as CourseRow);
+  const course = mapCourse(courseRow);
   const [modules, lessons, resources] = await Promise.all([listModules(course.id), listLessons(course.id), listResources(course.id)]);
 
   return {
@@ -334,7 +338,9 @@ export async function updateCourseMedia(input: { courseId: string; thumbnailUrl?
   if (input.coverImageUrl !== undefined) update.cover_image_url = input.coverImageUrl;
   if (input.coverImagePath !== undefined) update.cover_image_path = input.coverImagePath;
 
-  let { data, error } = await supabase.from("products").update(update).eq("id", input.courseId).eq("type", "curso").select(courseColumns).single();
+  const primary = await supabase.from("products").update(update).eq("id", input.courseId).eq("type", "curso").select(courseColumns).single();
+  let data = primary.data as CourseRow | null;
+  let error: SupabaseQueryError | null = primary.error;
 
   if (isMissingCourseMediaPathColumn(error)) {
     const legacyUpdate: Record<string, unknown> = {};
@@ -346,12 +352,13 @@ export async function updateCourseMedia(input: { courseId: string; thumbnailUrl?
     }
 
     const fallback = await supabase.from("products").update(legacyUpdate).eq("id", input.courseId).eq("type", "curso").select(legacyCourseColumns).single();
-    data = fallback.data;
+    data = fallback.data as CourseRow | null;
     error = fallback.error;
   }
 
   if (error) throw new Error(`Unable to update course media: ${error.message}`);
-  return mapCourse(data as CourseRow);
+  if (!data) throw new Error("Unable to update course media: course not found.");
+  return mapCourse(data);
 }
 
 export async function createLessonResource(input: { courseId: string; lessonId: string; title: string; fileUrl: string; fileBucket: string | null; filePath: string | null; fileType: string | null; fileSize: number | null }): Promise<LessonResource> {
