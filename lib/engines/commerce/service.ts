@@ -2,7 +2,6 @@ import crypto from "node:crypto";
 
 import type { AuthenticatedUser } from "@/lib/engines/auth/types";
 import { getPublicProductPage } from "@/lib/engines/catalog/service";
-import { createClient } from "@/lib/supabase/server";
 import {
   approvePaymentTransaction,
   createOrder,
@@ -18,6 +17,7 @@ import type { CheckoutIntent, PaymentStatus, PaymentWithOrder, StudentPayment } 
 import type { PaymentProofUploadInput, SubmitManualPaymentInput } from "@/lib/engines/commerce/validation";
 import { EXTENSION_BY_CONTENT_TYPE, STORAGE_BUCKETS, STORAGE_SIGNED_URL_TTL_SECONDS } from "@/src/config";
 import { recordAuditEvent } from "@/src/audit";
+import { createStorageSignedReadUrl, createStorageSignedUpload, findPendingPaymentForApproval, paymentApprovalAuditMetadata } from "@/src/services";
 
 const proofBucket = STORAGE_BUCKETS.PAYMENT_PROOFS;
 
@@ -68,7 +68,7 @@ export async function listPaymentsForAdmin(status?: PaymentStatus): Promise<Paym
 
 export async function approveManualPayment(input: { paymentId: string; adminId: string }): Promise<void> {
   const payments = await listAdminPayments("pending_review");
-  const paymentForApproval = payments.find((payment) => payment.id === input.paymentId);
+  const paymentForApproval = findPendingPaymentForApproval(payments, input.paymentId);
 
   if (!paymentForApproval) {
     throw new Error("El pago ya no esta pendiente de revision.");
@@ -86,13 +86,7 @@ export async function approveManualPayment(input: { paymentId: string; adminId: 
     targetType: "payment",
     targetId: input.paymentId,
     courseId: paymentForApproval.order.product?.id ?? paymentForApproval.order.productId,
-    metadata: {
-      orderId: paymentForApproval.orderId,
-      productId: paymentForApproval.order.productId,
-      studentUserId: paymentForApproval.order.userId,
-      method: paymentForApproval.method,
-      totalMxnCents: paymentForApproval.order.totalMxnCents
-    }
+    metadata: paymentApprovalAuditMetadata(paymentForApproval)
   });
 }
 
@@ -110,7 +104,6 @@ export async function createSignedPaymentProofUpload(auth: AuthenticatedUser, in
   signedUrl: string;
   proofUrl: string;
 }> {
-  const supabase = await createClient();
   const extension = EXTENSION_BY_CONTENT_TYPE[input.contentType];
 
   if (!extension) {
@@ -118,14 +111,24 @@ export async function createSignedPaymentProofUpload(auth: AuthenticatedUser, in
   }
 
   const path = `${auth.user.id}/${crypto.randomUUID()}.${extension}`;
-  const { data, error } = await supabase.storage.from(proofBucket).createSignedUploadUrl(path);
-  if (error || !data) throw new Error(error?.message ?? "No pudimos crear la carga del comprobante.");
-  return { bucket: proofBucket, path, token: data.token, signedUrl: data.signedUrl, proofUrl: path };
+  const upload = await createStorageSignedUpload({
+    bucket: proofBucket,
+    path,
+    errorMessage: "No pudimos crear la carga del comprobante."
+  });
+
+  return { bucket: proofBucket, path, token: upload.token, signedUrl: upload.signedUrl, proofUrl: path };
 }
 
 export async function createSignedPaymentProofReadUrl(path: string): Promise<string> {
-  const supabase = await createClient();
-  const { data, error } = await supabase.storage.from(proofBucket).createSignedUrl(path, STORAGE_SIGNED_URL_TTL_SECONDS.PAYMENT_PROOF);
-  if (error || !data) return "#";
-  return data.signedUrl;
+  try {
+    return await createStorageSignedReadUrl({
+      bucket: proofBucket,
+      path,
+      expiresIn: STORAGE_SIGNED_URL_TTL_SECONDS.PAYMENT_PROOF,
+      errorMessage: "No pudimos abrir el comprobante."
+    });
+  } catch {
+    return "#";
+  }
 }

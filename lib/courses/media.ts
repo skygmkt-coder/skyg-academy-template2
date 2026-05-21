@@ -3,9 +3,9 @@ import crypto from "node:crypto";
 import type { AuthenticatedUser } from "@/lib/engines/auth/types";
 import { requireUser } from "@/lib/engines/auth/helpers";
 import { canManageCourseEnrollment, checkCourseAccess } from "@/lib/engines/learning/enrollments";
-import { createClient } from "@/lib/supabase/server";
 import { APP_ROUTES, EXTENSION_BY_CONTENT_TYPE, STORAGE_BUCKETS, STORAGE_MIME_TYPES, STORAGE_SIGNED_URL_TTL_SECONDS, STORAGE_UPLOAD_LIMITS } from "@/src/config";
 import { recordAuditEvent } from "@/src/audit";
+import { createStorageSignedReadUrl, createStorageSignedUpload, getPublicStorageUrl, getServerSupabaseClient, removeStorageObjects } from "@/src/services";
 
 export type CourseMediaIntent = "course-thumbnail" | "course-cover" | "lesson-resource" | "lesson-media";
 export type MediaKind = "video" | "pdf" | "image" | "external";
@@ -45,17 +45,16 @@ export async function createSignedCourseMediaUpload(input: SignedCourseMediaInpu
   await assertCanManageCourseMedia(auth, input.courseId, input.lessonId);
   validateUpload(input);
 
-  const supabase = await createClient();
   const bucket = bucketForIntent(input.intent);
   const extension = EXTENSION_BY_CONTENT_TYPE[input.contentType];
   const path = `${auth.user.id}/${input.courseId}/${input.lessonId ?? "course"}/${crypto.randomUUID()}.${extension}`;
-  const { data, error } = await supabase.storage.from(bucket).createSignedUploadUrl(path);
+  const upload = await createStorageSignedUpload({
+    bucket,
+    path,
+    errorMessage: "No pudimos preparar la carga del archivo."
+  });
 
-  if (error || !data) {
-    throw new Error(error?.message ?? "No pudimos preparar la carga del archivo.");
-  }
-
-  const publicUrl = bucket === STORAGE_BUCKETS.COURSE_THUMBNAILS ? supabase.storage.from(bucket).getPublicUrl(path).data.publicUrl : null;
+  const publicUrl = bucket === STORAGE_BUCKETS.COURSE_THUMBNAILS ? await getPublicStorageUrl({ bucket, path }) : null;
   const mediaUrl = publicUrl ?? protectedMediaUrl({ bucket, path, courseId: input.courseId, lessonId: input.lessonId });
 
   await recordAuditEvent({
@@ -73,7 +72,7 @@ export async function createSignedCourseMediaUpload(input: SignedCourseMediaInpu
     }
   });
 
-  return { bucket, path, token: data.token, signedUrl: data.signedUrl, publicUrl, mediaUrl };
+  return { bucket, path, token: upload.token, signedUrl: upload.signedUrl, publicUrl, mediaUrl };
 }
 
 export async function createSignedMediaReadUrl(input: {
@@ -86,14 +85,12 @@ export async function createSignedMediaReadUrl(input: {
     throw new Error("No tienes acceso a este archivo.");
   }
 
-  const supabase = await createClient();
-  const { data, error } = await supabase.storage.from(input.bucket).createSignedUrl(input.path, STORAGE_SIGNED_URL_TTL_SECONDS.PROTECTED_MEDIA);
-
-  if (error || !data) {
-    throw new Error(error?.message ?? "No pudimos abrir el archivo.");
-  }
-
-  return data.signedUrl;
+  return createStorageSignedReadUrl({
+    bucket: input.bucket,
+    path: input.path,
+    expiresIn: STORAGE_SIGNED_URL_TTL_SECONDS.PROTECTED_MEDIA,
+    errorMessage: "No pudimos abrir el archivo."
+  });
 }
 
 export async function deleteMedia(input: { auth: AuthenticatedUser; courseId: string; bucket: string; path: string }): Promise<void> {
@@ -101,11 +98,11 @@ export async function deleteMedia(input: { auth: AuthenticatedUser; courseId: st
     throw new Error("No tienes permisos para eliminar este archivo.");
   }
 
-  const supabase = await createClient();
-  const { error } = await supabase.storage.from(input.bucket).remove([input.path]);
-
-  if (error) {
-    throw new Error(`No pudimos eliminar el archivo: ${error.message}`);
+  try {
+    await removeStorageObjects({ bucket: input.bucket, paths: [input.path] });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "Error desconocido";
+    throw new Error(`No pudimos eliminar el archivo: ${message}`);
   }
 
   await recordAuditEvent({
@@ -139,7 +136,7 @@ async function assertCanManageCourseMedia(auth: AuthenticatedUser, courseId: str
 
   if (!lessonId) return;
 
-  const db = (await createClient()) as unknown as UntypedClient;
+  const db = (await getServerSupabaseClient()) as unknown as UntypedClient;
   const { data, error } = await db
     .from("lessons")
     .select("id,product_id")
