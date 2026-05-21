@@ -1,26 +1,11 @@
 import type { AuthenticatedUser } from "@/lib/engines/auth/types";
 import type { AdminEnrollment, Enrollment } from "@/lib/engines/learning/types";
 import { getActiveEnrollment, listEnrollmentsByProductId, revokeEnrollment } from "@/lib/engines/learning/repository";
-import { createClient } from "@/lib/supabase/server";
 import { recordAuditEvent } from "@/src/audit";
+import { canAdminOrOwnCourse, enrollmentAuditMetadata, getServerSupabaseClient } from "@/src/services";
 
 export async function checkCourseAccess(auth: AuthenticatedUser, courseId: string): Promise<boolean> {
-  if (auth.profile.role === "admin") {
-    return true;
-  }
-
-  const supabase = await createClient();
-  const { data, error } = await supabase
-    .from("courses")
-    .select("id,creator_id")
-    .eq("id", courseId)
-    .maybeSingle();
-
-  if (error) {
-    throw new Error(`Unable to check course ownership: ${error.message}`);
-  }
-
-  if (data?.creator_id === auth.user.id) {
+  if (await canAdminOrOwnCourse(auth, courseId)) {
     return true;
   }
 
@@ -29,22 +14,7 @@ export async function checkCourseAccess(auth: AuthenticatedUser, courseId: strin
 }
 
 export async function canManageCourseEnrollment(auth: AuthenticatedUser, courseId: string): Promise<boolean> {
-  if (auth.profile.role === "admin") {
-    return true;
-  }
-
-  const supabase = await createClient();
-  const { data, error } = await supabase
-    .from("courses")
-    .select("id,creator_id")
-    .eq("id", courseId)
-    .maybeSingle();
-
-  if (error) {
-    throw new Error(`Unable to check course owner: ${error.message}`);
-  }
-
-  return data?.creator_id === auth.user.id;
+  return canAdminOrOwnCourse(auth, courseId);
 }
 
 export async function enrollUserToCourse(input: {
@@ -55,7 +25,7 @@ export async function enrollUserToCourse(input: {
   paymentProvider?: string | null;
   paymentReference?: string | null;
 }): Promise<Enrollment> {
-  const supabase = await createClient();
+  const supabase = await getServerSupabaseClient();
   const { data, error } = await supabase
     .from("enrollments")
     .upsert(
@@ -92,12 +62,12 @@ export async function enrollUserToCourse(input: {
     targetType: "enrollment",
     targetId: validated.id,
     courseId: input.courseId,
-    metadata: {
+    metadata: enrollmentAuditMetadata({
       targetUserId: input.userId,
       paymentProvider: input.paymentProvider ?? "manual",
       paymentReference: input.paymentReference ?? null,
       expiresAt: input.expiresAt
-    }
+    })
   });
 
   return validated;
@@ -116,10 +86,10 @@ export async function revokeCourseAccess(input: { enrollmentId: string; courseId
     targetType: "enrollment",
     targetId: enrollment.id,
     courseId: input.courseId,
-    metadata: {
+    metadata: enrollmentAuditMetadata({
       targetUserId: enrollment.userId,
       previousStatus: "active"
-    }
+    })
   });
 
   return enrollment;
