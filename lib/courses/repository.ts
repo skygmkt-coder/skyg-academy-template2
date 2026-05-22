@@ -11,7 +11,7 @@ type CourseRow = {
   description: string | null;
   cover_image_url: string | null;
   cover_image_path?: string | null;
-  thumbnail_url: string | null;
+  thumbnail_url?: string | null;
   thumbnail_path?: string | null;
   is_published: boolean;
   created_at: string;
@@ -69,14 +69,53 @@ type SupabaseQueryError = {
   hint?: string;
 };
 
+type DbValue = string | number | boolean | null;
+type DbRow = Record<string, DbValue>;
+type DbMutation = Record<string, DbValue>;
+type QueryResult = PromiseLike<{ data: DbRow | DbRow[] | null; error: SupabaseQueryError | null }>;
+type CourseRepositoryQuery = {
+  select: (columns: string) => CourseRepositoryQuery;
+  eq: (column: string, value: DbValue) => CourseRepositoryQuery;
+  in: (column: string, values: DbValue[]) => CourseRepositoryQuery;
+  order: (column: string, options?: { ascending?: boolean }) => CourseRepositoryQuery;
+  limit: (count: number) => CourseRepositoryQuery;
+  maybeSingle: () => QueryResult;
+  single: () => QueryResult;
+  then: QueryResult["then"];
+};
+type CourseRepositoryTable = {
+  select: (columns: string) => CourseRepositoryQuery;
+  insert: (values: DbMutation | DbMutation[]) => CourseRepositoryQuery;
+  update: (values: DbMutation) => CourseRepositoryQuery;
+  delete: () => CourseRepositoryQuery;
+};
+type CourseRepositoryTableName = "courses" | "products" | "modules" | "lessons" | "lesson_resources";
+type CourseRepositoryClient = {
+  from: (table: CourseRepositoryTableName) => CourseRepositoryTable;
+};
+
 const courseColumns = "id,creator_id,title,slug,description,cover_image_url,cover_image_path,thumbnail_url,thumbnail_path,is_published,created_at,updated_at";
-const legacyCourseColumns = "id,creator_id,title,slug,description,cover_image_url,thumbnail_url,is_published,created_at,updated_at";
+const storefrontCourseColumns = "id,creator_id,title,slug,description,cover_image_url,thumbnail_url,is_published,created_at,updated_at";
+const baseCourseColumns = "id,creator_id,title,slug,description,cover_image_url,is_published,created_at,updated_at";
 const moduleColumns = "id,course_id,title,description,display_order,created_at,updated_at";
 const lessonColumns =
   "id,product_id,module_id,title,slug,description,video_url,media_bucket,media_path,media_kind,display_order,is_preview,lesson_type,duration_minutes,status,created_at,updated_at";
 const legacyLessonColumns = "id,product_id,module_id,title,slug,description,video_url,display_order,is_preview,lesson_type,duration_minutes,status,created_at,updated_at";
 const resourceColumns = "id,lesson_id,title,file_url,file_bucket,file_path,file_type,file_size,display_order,created_at,updated_at";
 const legacyResourceColumns = "id,lesson_id,title,file_url,display_order,created_at,updated_at";
+
+async function createCourseRepositoryClient(): Promise<CourseRepositoryClient> {
+  const client = await createClient();
+  return {
+    from: (table: CourseRepositoryTableName) => {
+      if (table === "courses") return client.from("courses") as CourseRepositoryTable;
+      if (table === "products") return client.from("products") as CourseRepositoryTable;
+      if (table === "modules") return client.from("modules") as CourseRepositoryTable;
+      if (table === "lessons") return client.from("lessons") as CourseRepositoryTable;
+      return client.from("lesson_resources") as CourseRepositoryTable;
+    }
+  };
+}
 
 function mapCourse(row: CourseRow): Course {
   return {
@@ -87,7 +126,7 @@ function mapCourse(row: CourseRow): Course {
     description: row.description,
     coverImageUrl: row.cover_image_url,
     coverImagePath: row.cover_image_path ?? null,
-    thumbnailUrl: row.thumbnail_url,
+    thumbnailUrl: row.thumbnail_url ?? null,
     thumbnailPath: row.thumbnail_path ?? null,
     isPublished: row.is_published,
     createdAt: row.created_at,
@@ -150,7 +189,7 @@ function mapResource(row: LessonResourceRow, courseId: string): LessonResource {
 }
 
 export async function listOwnedCourseSummaries(ownerId: string): Promise<AdminCourseSummary[]> {
-  const supabase = await createClient();
+  const supabase = await createCourseRepositoryClient();
   const primary = await supabase
     .from("courses")
     .select(courseColumns)
@@ -160,13 +199,23 @@ export async function listOwnedCourseSummaries(ownerId: string): Promise<AdminCo
   let error: SupabaseQueryError | null = primary.error;
 
   if (isMissingCourseMediaSchemaColumn(error)) {
-    const fallback = await supabase
+    const storefrontFallback = await supabase
       .from("courses")
-      .select(legacyCourseColumns)
+      .select(storefrontCourseColumns)
       .eq("creator_id", ownerId)
       .order("created_at", { ascending: false });
-    data = fallback.data as CourseRow[] | null;
-    error = fallback.error;
+    data = storefrontFallback.data as CourseRow[] | null;
+    error = storefrontFallback.error;
+  }
+
+  if (isMissingCourseMediaSchemaColumn(error)) {
+    const baseFallback = await supabase
+      .from("courses")
+      .select(baseCourseColumns)
+      .eq("creator_id", ownerId)
+      .order("created_at", { ascending: false });
+    data = baseFallback.data as CourseRow[] | null;
+    error = baseFallback.error;
   }
 
   if (error) throw new Error(`Unable to list courses: ${error.message}`);
@@ -183,8 +232,8 @@ export async function listOwnedCourseSummaries(ownerId: string): Promise<AdminCo
   if (modulesResult.error) throw new Error(`Unable to count modules: ${modulesResult.error.message}`);
   if (lessonsResult.error) throw new Error(`Unable to count lessons: ${lessonsResult.error.message}`);
 
-  const moduleCounts = countByKey(modulesResult.data, "course_id");
-  const lessonCounts = countByKey(lessonsResult.data, "product_id");
+  const moduleCounts = countByKey(modulesResult.data as Array<Record<string, string>> | null, "course_id");
+  const lessonCounts = countByKey(lessonsResult.data as Array<Record<string, string>> | null, "product_id");
 
   return courses.map((course) => ({ ...course, moduleCount: moduleCounts.get(course.id) ?? 0, lessonCount: lessonCounts.get(course.id) ?? 0 }));
 }
@@ -192,11 +241,11 @@ export async function listOwnedCourseSummaries(ownerId: string): Promise<AdminCo
 export async function createCourseDraft(input: { ownerId: string; title: string }): Promise<Course> {
   const normalizedTitle = input.title.trim();
   const slug = `${slugifyTitle(normalizedTitle)}-${Date.now().toString(36)}`;
-  const supabase = await createClient();
+  const supabase = await createCourseRepositoryClient();
   const { data, error } = await supabase
     .from("products")
     .insert({ creator_id: input.ownerId, title: normalizedTitle, slug, type: "curso", is_published: false })
-    .select(legacyCourseColumns)
+    .select(baseCourseColumns)
     .single();
 
   if (error) throw new Error(`Unable to create course: ${error.message}`);
@@ -204,7 +253,7 @@ export async function createCourseDraft(input: { ownerId: string; title: string 
 }
 
 export async function getCourseContent(courseId?: string, ownerId?: string): Promise<CourseContent | null> {
-  const supabase = await createClient();
+  const supabase = await createCourseRepositoryClient();
   let courseQuery = supabase.from("courses").select(courseColumns);
   if (ownerId) courseQuery = courseQuery.eq("creator_id", ownerId);
 
@@ -215,13 +264,23 @@ export async function getCourseContent(courseId?: string, ownerId?: string): Pro
   let courseError: SupabaseQueryError | null = primary.error;
 
   if (isMissingCourseMediaSchemaColumn(courseError)) {
-    let legacyCourseQuery = supabase.from("courses").select(legacyCourseColumns);
-    if (ownerId) legacyCourseQuery = legacyCourseQuery.eq("creator_id", ownerId);
-    const fallback = courseId
-      ? await legacyCourseQuery.eq("id", courseId).maybeSingle()
-      : await legacyCourseQuery.order("created_at", { ascending: false }).limit(1).maybeSingle();
-    courseRow = fallback.data as CourseRow | null;
-    courseError = fallback.error;
+    let storefrontCourseQuery = supabase.from("courses").select(storefrontCourseColumns);
+    if (ownerId) storefrontCourseQuery = storefrontCourseQuery.eq("creator_id", ownerId);
+    const storefrontFallback = courseId
+      ? await storefrontCourseQuery.eq("id", courseId).maybeSingle()
+      : await storefrontCourseQuery.order("created_at", { ascending: false }).limit(1).maybeSingle();
+    courseRow = storefrontFallback.data as CourseRow | null;
+    courseError = storefrontFallback.error;
+  }
+
+  if (isMissingCourseMediaSchemaColumn(courseError)) {
+    let baseCourseQuery = supabase.from("courses").select(baseCourseColumns);
+    if (ownerId) baseCourseQuery = baseCourseQuery.eq("creator_id", ownerId);
+    const baseFallback = courseId
+      ? await baseCourseQuery.eq("id", courseId).maybeSingle()
+      : await baseCourseQuery.order("created_at", { ascending: false }).limit(1).maybeSingle();
+    courseRow = baseFallback.data as CourseRow | null;
+    courseError = baseFallback.error;
   }
 
   if (courseError) throw new Error(`Unable to load course: ${courseError.message}`);
@@ -243,18 +302,18 @@ export async function getCourseContent(courseId?: string, ownerId?: string): Pro
 
 export async function createModule(input: { courseId: string; title: string }): Promise<Module> {
   const modules = await listModules(input.courseId);
-  const supabase = await createClient();
+  const supabase = await createCourseRepositoryClient();
   const { data, error } = await supabase
     .from("modules")
     .insert({ course_id: input.courseId, title: input.title, display_order: nextDisplayOrder(modules) })
     .select(moduleColumns)
     .single();
   if (error) throw new Error(`Unable to create module: ${error.message}`);
-  return mapModule(data);
+  return mapModule(data as ModuleRow);
 }
 
 export async function updateModuleTitle(input: { courseId: string; moduleId: string; title: string }): Promise<Module> {
-  const supabase = await createClient();
+  const supabase = await createCourseRepositoryClient();
   const { data, error } = await supabase
     .from("modules")
     .update({ title: input.title })
@@ -263,11 +322,11 @@ export async function updateModuleTitle(input: { courseId: string; moduleId: str
     .select(moduleColumns)
     .single();
   if (error) throw new Error(`Unable to update module title: ${error.message}`);
-  return mapModule(data);
+  return mapModule(data as ModuleRow);
 }
 
 export async function deleteModule(input: { courseId: string; moduleId: string }): Promise<void> {
-  const supabase = await createClient();
+  const supabase = await createCourseRepositoryClient();
   const { error: lessonsError } = await supabase.from("lessons").delete().eq("product_id", input.courseId).eq("module_id", input.moduleId);
   if (lessonsError) throw new Error(`Unable to delete module lessons: ${lessonsError.message}`);
   const { error } = await supabase.from("modules").delete().eq("id", input.moduleId).eq("course_id", input.courseId);
@@ -278,7 +337,7 @@ export async function createLesson(input: { courseId: string; moduleId: string; 
   const [module, lessons] = await Promise.all([getModuleById(input.moduleId), listLessons(input.courseId)]);
   if (!module || module.courseId !== input.courseId) throw new Error("Modulo invalido.");
 
-  const supabase = await createClient();
+  const supabase = await createCourseRepositoryClient();
   const { data, error } = await supabase
     .from("lessons")
     .insert({ product_id: input.courseId, module_id: input.moduleId, title: input.title, slug: nextLessonSlug(input.title, lessons), display_order: nextDisplayOrder(lessons.filter((lesson) => lesson.moduleId === input.moduleId)), status: "draft" })
@@ -305,8 +364,8 @@ export async function updateLessonDetails(input: {
   durationMinutes?: number | null;
   status?: string;
 }): Promise<Lesson> {
-  const supabase = await createClient();
-  const update: Record<string, unknown> = {};
+  const supabase = await createCourseRepositoryClient();
+  const update: DbMutation = {};
   if (input.title !== undefined) update.title = input.title;
   if (input.description !== undefined) update.description = input.description;
   if (input.videoUrl !== undefined) update.video_url = input.videoUrl;
@@ -328,7 +387,7 @@ export async function updateLessonDetails(input: {
   let error: SupabaseQueryError | null = primary.error;
 
   if (isMissingCourseMediaSchemaColumn(error)) {
-    const legacyUpdate: Record<string, unknown> = {};
+    const legacyUpdate: DbMutation = {};
     if (input.title !== undefined) legacyUpdate.title = input.title;
     if (input.description !== undefined) legacyUpdate.description = input.description;
     if (input.videoUrl !== undefined) legacyUpdate.video_url = input.videoUrl;
@@ -357,14 +416,14 @@ export async function updateLessonDetails(input: {
 }
 
 export async function deleteLesson(input: { courseId: string; lessonId: string }): Promise<void> {
-  const supabase = await createClient();
+  const supabase = await createCourseRepositoryClient();
   const { error } = await supabase.from("lessons").delete().eq("id", input.lessonId).eq("product_id", input.courseId);
   if (error) throw new Error(`Unable to delete lesson: ${error.message}`);
 }
 
 export async function updateCourseMedia(input: { courseId: string; thumbnailUrl?: string | null; thumbnailPath?: string | null; coverImageUrl?: string | null; coverImagePath?: string | null }): Promise<Course> {
-  const supabase = await createClient();
-  const update: Record<string, unknown> = {};
+  const supabase = await createCourseRepositoryClient();
+  const update: DbMutation = {};
   if (input.thumbnailUrl !== undefined) update.thumbnail_url = input.thumbnailUrl;
   if (input.thumbnailPath !== undefined) update.thumbnail_path = input.thumbnailPath;
   if (input.coverImageUrl !== undefined) update.cover_image_url = input.coverImageUrl;
@@ -375,17 +434,30 @@ export async function updateCourseMedia(input: { courseId: string; thumbnailUrl?
   let error: SupabaseQueryError | null = primary.error;
 
   if (isMissingCourseMediaSchemaColumn(error)) {
-    const legacyUpdate: Record<string, unknown> = {};
-    if (input.thumbnailUrl !== undefined) legacyUpdate.thumbnail_url = input.thumbnailUrl;
-    if (input.coverImageUrl !== undefined) legacyUpdate.cover_image_url = input.coverImageUrl;
+    const storefrontUpdate: DbMutation = {};
+    if (input.thumbnailUrl !== undefined) storefrontUpdate.thumbnail_url = input.thumbnailUrl;
+    if (input.coverImageUrl !== undefined) storefrontUpdate.cover_image_url = input.coverImageUrl;
 
-    if (Object.keys(legacyUpdate).length === 0) {
+    if (Object.keys(storefrontUpdate).length === 0) {
       throw new Error("Unable to update course media: course media path columns are not available in the database schema.");
     }
 
-    const fallback = await supabase.from("products").update(legacyUpdate).eq("id", input.courseId).eq("type", "curso").select(legacyCourseColumns).single();
-    data = fallback.data as CourseRow | null;
-    error = fallback.error;
+    const storefrontFallback = await supabase.from("products").update(storefrontUpdate).eq("id", input.courseId).eq("type", "curso").select(storefrontCourseColumns).single();
+    data = storefrontFallback.data as CourseRow | null;
+    error = storefrontFallback.error;
+  }
+
+  if (isMissingCourseMediaSchemaColumn(error)) {
+    const baseUpdate: DbMutation = {};
+    if (input.coverImageUrl !== undefined) baseUpdate.cover_image_url = input.coverImageUrl;
+
+    if (Object.keys(baseUpdate).length === 0) {
+      throw new Error("Unable to update course media: thumbnail columns are not available in the database schema.");
+    }
+
+    const baseFallback = await supabase.from("products").update(baseUpdate).eq("id", input.courseId).eq("type", "curso").select(baseCourseColumns).single();
+    data = baseFallback.data as CourseRow | null;
+    error = baseFallback.error;
   }
 
   if (error) throw new Error(`Unable to update course media: ${error.message}`);
@@ -395,7 +467,7 @@ export async function updateCourseMedia(input: { courseId: string; thumbnailUrl?
 
 export async function createLessonResource(input: { courseId: string; lessonId: string; title: string; fileUrl: string; fileBucket: string | null; filePath: string | null; fileType: string | null; fileSize: number | null }): Promise<LessonResource> {
   const resources = await listResources(input.courseId, input.lessonId);
-  const supabase = await createClient();
+  const supabase = await createCourseRepositoryClient();
   const primary = await supabase
     .from("lesson_resources")
     .insert({ lesson_id: input.lessonId, title: input.title, file_url: input.fileUrl, file_bucket: input.fileBucket, file_path: input.filePath, file_type: input.fileType, file_size: input.fileSize, display_order: nextDisplayOrder(resources) })
@@ -420,7 +492,7 @@ export async function createLessonResource(input: { courseId: string; lessonId: 
 }
 
 export async function deleteLessonResource(input: { courseId: string; resourceId: string }): Promise<LessonResource | null> {
-  const supabase = await createClient();
+  const supabase = await createCourseRepositoryClient();
   const primary = await supabase
     .from("lesson_resources")
     .delete()
@@ -446,14 +518,14 @@ export async function deleteLessonResource(input: { courseId: string; resourceId
 }
 
 async function listModules(courseId: string): Promise<Module[]> {
-  const supabase = await createClient();
+  const supabase = await createCourseRepositoryClient();
   const { data, error } = await supabase.from("modules").select(moduleColumns).eq("course_id", courseId).order("display_order", { ascending: true }).order("created_at", { ascending: true });
   if (error) throw new Error(`Unable to list modules: ${error.message}`);
-  return data.map(mapModule);
+  return ((data ?? []) as ModuleRow[]).map(mapModule);
 }
 
 async function listLessons(courseId: string): Promise<Lesson[]> {
-  const supabase = await createClient();
+  const supabase = await createCourseRepositoryClient();
   const primary = await supabase.from("lessons").select(lessonColumns).eq("product_id", courseId).order("display_order", { ascending: true }).order("created_at", { ascending: true });
   let data = primary.data as LessonRow[] | null;
   let error: SupabaseQueryError | null = primary.error;
@@ -472,7 +544,7 @@ async function listResources(courseId: string, lessonId?: string): Promise<Lesso
   const lessons = await listLessons(courseId);
   const lessonIds = lessonId ? [lessonId] : lessons.map((lesson) => lesson.id);
   if (lessonIds.length === 0) return [];
-  const supabase = await createClient();
+  const supabase = await createCourseRepositoryClient();
   const primary = await supabase.from("lesson_resources").select(resourceColumns).in("lesson_id", lessonIds).order("display_order", { ascending: true }).order("created_at", { ascending: true });
   let data = primary.data as LessonResourceRow[] | null;
   let error: SupabaseQueryError | null = primary.error;
@@ -488,10 +560,10 @@ async function listResources(courseId: string, lessonId?: string): Promise<Lesso
 }
 
 async function getModuleById(moduleId: string): Promise<Module | null> {
-  const supabase = await createClient();
+  const supabase = await createCourseRepositoryClient();
   const { data, error } = await supabase.from("modules").select(moduleColumns).eq("id", moduleId).maybeSingle();
   if (error) throw new Error(`Unable to load module: ${error.message}`);
-  return data ? mapModule(data) : null;
+  return data ? mapModule(data as ModuleRow) : null;
 }
 
 function nextDisplayOrder(items: Array<{ displayOrder: number }>): number {
@@ -526,6 +598,7 @@ function isMissingCourseMediaSchemaColumn(error: SupabaseQueryError | null): boo
   if (!error) return false;
   const mediaSchemaColumns = [
     "cover_image_path",
+    "thumbnail_url",
     "thumbnail_path",
     "media_bucket",
     "media_path",
