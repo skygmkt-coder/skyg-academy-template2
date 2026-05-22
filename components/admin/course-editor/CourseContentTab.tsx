@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState, useTransition } from "react";
+import Image from "next/image";
 import { Download, File, ImageIcon, Trash2, UploadCloud, Video } from "lucide-react";
 
 import {
@@ -229,7 +230,13 @@ function CourseImageUpload({ title, value, onUpload }: { title: string; value: s
   return (
     <div className="space-y-3 rounded-md border border-slate-200 bg-slate-50 p-4">
       <div className="flex items-center gap-2 font-semibold text-slate-950"><ImageIcon aria-hidden className="h-4 w-4 text-brand-primary" />{title}</div>
-      {value ? <img src={value} alt="" className="aspect-video w-full rounded-md border border-slate-200 object-cover" /> : <div className="flex aspect-video items-center justify-center rounded-md border border-dashed border-slate-300 text-sm text-slate-500">Sin imagen</div>}
+      {value ? (
+        <div className="relative aspect-video overflow-hidden rounded-md border border-slate-200">
+          <Image src={value} alt="" fill sizes="(min-width: 1024px) 34vw, 100vw" className="object-cover" />
+        </div>
+      ) : (
+        <div className="flex aspect-video items-center justify-center rounded-md border border-dashed border-slate-300 text-sm text-slate-500">Sin imagen</div>
+      )}
       <label className="inline-flex min-h-10 cursor-pointer items-center gap-2 rounded-md bg-white px-3 py-2 text-sm font-semibold text-slate-800 ring-1 ring-slate-200">
         <UploadCloud aria-hidden className="h-4 w-4" /> Reemplazar
         <input type="file" accept="image/jpeg,image/png,image/webp" className="sr-only" onChange={(event) => { const file = event.target.files?.[0]; if (file) onUpload(file); }} />

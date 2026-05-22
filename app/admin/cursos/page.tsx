@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { BookOpen, Layers, Plus, ScrollText } from "lucide-react";
 
+import { PageHeader } from "@/components/layout/page-header";
 import { createCourseDraftAction } from "@/lib/courses/actions";
 import { listOwnedCourseSummaries } from "@/lib/courses/repository";
 import { requireUser } from "@/lib/engines/auth/helpers";
@@ -19,41 +20,39 @@ export default async function AdminCoursesPage() {
 
   return (
     <section className="space-y-6">
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
-        <div>
-          <p className="text-sm font-medium uppercase tracking-normal text-brand-primary">Cursos</p>
-          <h1 className="text-2xl font-semibold text-slate-950">Administrar cursos</h1>
-          <p className="mt-1 max-w-2xl text-sm leading-6 text-slate-600">
-            Gestiona el contenido de los cursos que pertenecen a tu cuenta.
-          </p>
-        </div>
+      <PageHeader
+        eyebrow="Cursos"
+        title="Administrar cursos"
+        description="Gestiona el contenido, media, pagos y alumnos de los cursos que pertenecen a tu cuenta."
+        actions={
         <form action={createCourseDraftAction}>
           <button
             type="submit"
-            className="inline-flex min-h-11 items-center gap-2 rounded-md bg-brand-primary px-4 py-2 text-sm font-semibold text-white"
+            className="inline-flex min-h-10 items-center gap-2 rounded-md bg-brand-primary px-4 py-2 text-sm font-semibold text-white shadow-soft"
           >
             <Plus aria-hidden className="h-4 w-4" />
             Nuevo curso
           </button>
         </form>
-      </div>
+        }
+      />
 
       {courses.length === 0 ? (
-        <div className="rounded-lg border border-dashed border-slate-300 bg-white p-8">
+        <div className="rounded-lg border border-dashed border-line-strong bg-surface-base p-8 shadow-soft">
           <div className="flex max-w-xl flex-col gap-3">
             <span className="flex h-11 w-11 items-center justify-center rounded-md bg-brand-primary/10 text-brand-primary">
               <BookOpen aria-hidden className="h-5 w-5" />
             </span>
             <div>
-              <h2 className="text-lg font-semibold text-slate-950">Todavia no hay cursos</h2>
-              <p className="mt-1 text-sm leading-6 text-slate-600">
+              <h2 className="text-lg font-semibold text-ink-primary">Todavia no hay cursos</h2>
+              <p className="mt-1 text-sm leading-6 text-ink-secondary">
                 Crea tu primer curso para empezar a organizar modulos y lecciones desde el panel.
               </p>
             </div>
             <form action={createCourseDraftAction}>
               <button
                 type="submit"
-                className="inline-flex min-h-11 w-fit items-center gap-2 rounded-md bg-brand-primary px-4 py-2 text-sm font-semibold text-white"
+                className="inline-flex min-h-10 w-fit items-center gap-2 rounded-md bg-brand-primary px-4 py-2 text-sm font-semibold text-white shadow-soft"
               >
                 <Plus aria-hidden className="h-4 w-4" />
                 Nuevo curso
@@ -67,12 +66,12 @@ export default async function AdminCoursesPage() {
             <Link
               key={course.id}
               href={`/admin/cursos/${course.id}`}
-              className="rounded-lg border border-slate-200 bg-white p-5 transition hover:border-brand-primary/40 hover:shadow-sm"
+              className="rounded-lg border border-line-subtle bg-surface-base p-5 shadow-soft transition hover:border-brand-primary/40"
             >
               <div className="flex items-start justify-between gap-4">
                 <div className="min-w-0">
-                  <h2 className="truncate text-lg font-semibold text-slate-950">{course.title}</h2>
-                  <p className="mt-1 text-sm text-slate-500">Creado el {formatDate(course.createdAt)}</p>
+                  <h2 className="truncate text-lg font-semibold text-ink-primary">{course.title}</h2>
+                  <p className="mt-1 text-sm text-ink-muted">Creado el {formatDate(course.createdAt)}</p>
                 </div>
                 <span
                   className={`shrink-0 rounded-md px-2 py-1 text-xs font-semibold ${
@@ -82,16 +81,16 @@ export default async function AdminCoursesPage() {
                   {course.isPublished ? "Publicado" : "Draft"}
                 </span>
               </div>
-              <div className="mt-5 grid grid-cols-2 gap-3 text-sm text-slate-600">
-                <div className="rounded-md border border-slate-200 bg-slate-50 px-3 py-2">
-                  <div className="flex items-center gap-2 font-medium text-slate-900">
+              <div className="mt-5 grid grid-cols-2 gap-3 text-sm text-ink-secondary">
+                <div className="rounded-md border border-line-subtle bg-surface-muted px-3 py-2">
+                  <div className="flex items-center gap-2 font-medium text-ink-primary">
                     <Layers aria-hidden className="h-4 w-4 text-brand-primary" />
                     {course.moduleCount}
                   </div>
                   <p className="mt-1">Modulos</p>
                 </div>
-                <div className="rounded-md border border-slate-200 bg-slate-50 px-3 py-2">
-                  <div className="flex items-center gap-2 font-medium text-slate-900">
+                <div className="rounded-md border border-line-subtle bg-surface-muted px-3 py-2">
+                  <div className="flex items-center gap-2 font-medium text-ink-primary">
                     <ScrollText aria-hidden className="h-4 w-4 text-brand-primary" />
                     {course.lessonCount}
                   </div>

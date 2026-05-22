@@ -1,6 +1,7 @@
 import Image from "next/image";
 import Link from "next/link";
 
+import { PageHeader } from "@/components/layout/page-header";
 import { requireUser } from "@/lib/engines/auth/helpers";
 import { listStudentProducts } from "@/lib/engines/learning/service";
 import { listPaymentsForStudent } from "@/lib/engines/commerce/service";
@@ -14,16 +15,13 @@ export default async function MyProductsPage() {
 
   return (
     <section className="space-y-6">
-      <div className="space-y-2">
-        <p className="text-sm font-medium uppercase tracking-normal text-brand-primary">Cuenta</p>
-        <h1 className="text-2xl font-semibold text-slate-950">Mis productos</h1>
-        <p className="max-w-2xl text-sm leading-6 text-slate-600">
-          Hola{auth.profile.fullName ? `, ${auth.profile.fullName}` : ""}. Continua aprendiendo desde tu
-          ultimo avance.
-        </p>
-      </div>
+      <PageHeader
+        eyebrow="Cuenta"
+        title="Mis productos"
+        description={`Hola${auth.profile.fullName ? `, ${auth.profile.fullName}` : ""}. Continua aprendiendo desde tu ultimo avance.`}
+      />
       {products.length === 0 ? (
-        <div className="rounded-lg border border-dashed border-slate-300 bg-white p-6 text-sm text-slate-600">
+        <div className="rounded-lg border border-dashed border-line-strong bg-surface-base p-6 text-sm text-ink-secondary shadow-soft">
           No tienes productos activos todavia.
         </div>
       ) : (

@@ -1,4 +1,5 @@
 import Link from "next/link";
+import Image from "next/image";
 import { BookOpen, CheckCircle2, ChevronLeft, ChevronRight, Circle, CreditCard, Download, ExternalLink, FileText, Lock, Menu, PlayCircle } from "lucide-react";
 
 import { PaymentProofForm } from "@/components/learning/payment-proof-form";
@@ -75,7 +76,11 @@ function LessonMedia({ lesson }: { lesson: CoursePlayerLesson }) {
   }
 
   if (lesson.mediaKind === "image") {
-    return <img src={url} alt="" className="aspect-video w-full object-contain bg-black" />;
+    return (
+      <div className="relative aspect-video w-full bg-black">
+        <Image src={url} alt="" fill sizes="100vw" className="object-contain" />
+      </div>
+    );
   }
 
   if (lesson.mediaKind === "video" || url.includes("bucket=lesson-media")) {
