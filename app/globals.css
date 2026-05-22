@@ -5,7 +5,38 @@
 :root {
   --color-primary: 12 96 160;
   --color-accent: 20 184 166;
+  --color-surface-canvas: 248 250 252;
+  --color-surface-base: 255 255 255;
+  --color-surface-raised: 255 255 255;
+  --color-surface-muted: 241 245 249;
+  --color-border-subtle: 226 232 240;
+  --color-border-strong: 203 213 225;
+  --color-text-primary: 15 23 42;
+  --color-text-secondary: 71 85 105;
+  --color-text-muted: 100 116 139;
+  --color-success: 5 150 105;
+  --color-warning: 217 119 6;
+  --color-danger: 220 38 38;
+  --radius-xs: 0.25rem;
+  --radius-sm: 0.375rem;
+  --radius-md: 0.5rem;
+  --radius-lg: 0.75rem;
+  --shadow-soft: 0 1px 2px rgb(15 23 42 / 0.06), 0 8px 24px rgb(15 23 42 / 0.04);
+  --shadow-float: 0 20px 50px rgb(15 23 42 / 0.12);
   color-scheme: light;
+}
+
+.dark {
+  --color-surface-canvas: 2 6 23;
+  --color-surface-base: 15 23 42;
+  --color-surface-raised: 17 24 39;
+  --color-surface-muted: 30 41 59;
+  --color-border-subtle: 51 65 85;
+  --color-border-strong: 71 85 105;
+  --color-text-primary: 248 250 252;
+  --color-text-secondary: 203 213 225;
+  --color-text-muted: 148 163 184;
+  color-scheme: dark;
 }
 
 * {
@@ -15,8 +46,9 @@
 body {
   margin: 0;
   min-height: 100vh;
-  background: #f8fafc;
-  color: #0f172a;
+  background: rgb(var(--color-surface-canvas));
+  color: rgb(var(--color-text-primary));
+  font-feature-settings: "cv02", "cv03", "cv04", "cv11";
 }
 
 a {

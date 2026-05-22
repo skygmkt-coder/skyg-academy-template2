@@ -4,9 +4,10 @@ import type { BrandSettings } from "@/lib/engines/branding/types";
 
 type BrandMarkProps = {
   brand: BrandSettings;
+  compact?: boolean;
 };
 
-export function BrandMark({ brand }: BrandMarkProps) {
+export function BrandMark({ brand, compact = false }: BrandMarkProps) {
   return (
     <div className="flex items-center gap-3">
       {brand.logoUrl ? (
@@ -20,7 +21,7 @@ export function BrandMark({ brand }: BrandMarkProps) {
       ) : (
         <div aria-hidden className="h-9 w-9 rounded bg-brand-primary" />
       )}
-      <span className="text-base font-semibold text-slate-950">{brand.brandName}</span>
+      {compact ? null : <span className="truncate text-base font-semibold text-ink-primary">{brand.brandName}</span>}
     </div>
   );
 }

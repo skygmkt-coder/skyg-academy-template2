@@ -5,6 +5,7 @@ import { CoursePaymentProofsPanel } from "@/components/admin/course-payment-proo
 import { CoursePaymentSettingsPanel } from "@/components/admin/course-payment-settings-panel";
 import { CourseStorefrontSettingsPanel } from "@/components/admin/course-storefront-settings-panel";
 import CourseContentTab from "@/components/admin/course-editor/CourseContentTab";
+import { PageHeader } from "@/components/layout/page-header";
 import { getCourseContent } from "@/lib/courses/repository";
 import { getCourseStorefrontSettings } from "@/lib/courses/storefront";
 import { listStudentProfiles } from "@/lib/engines/auth/repository";
@@ -33,15 +34,11 @@ export default async function AdminCourseEditorPage({ params }: { params: Promis
 
   return (
     <section className="space-y-6">
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
-        <div>
-          <p className="text-sm font-medium uppercase tracking-normal text-brand-primary">Editor de curso</p>
-          <h1 className="text-2xl font-semibold text-slate-950">{course.title}</h1>
-          <p className="mt-1 text-sm text-slate-600">
-            {course.isPublished ? "Publicado" : "Draft"} - {course.modules.length} modulos - {lessonCount} lecciones
-          </p>
-        </div>
-      </div>
+      <PageHeader
+        eyebrow="Editor de curso"
+        title={course.title}
+        meta={`${course.isPublished ? "Publicado" : "Draft"} - ${course.modules.length} modulos - ${lessonCount} lecciones`}
+      />
       <CourseContentTab courseId={course.id} />
       <CourseStorefrontSettingsPanel settings={storefrontSettings} />
       <CoursePaymentSettingsPanel settings={paymentSettings} />
