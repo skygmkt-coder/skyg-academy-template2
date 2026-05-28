@@ -19,6 +19,8 @@ import { formatMxn } from "@/lib/engines/catalog/helpers";
 import { listPublicProducts } from "@/lib/engines/catalog/service";
 import type { Product } from "@/lib/engines/catalog/types";
 
+export const dynamic = "force-dynamic";
+
 const navLinks = [
   { href: "#plataforma", label: "Plataforma" },
   { href: "#experiencia", label: "Experiencia" },
@@ -59,12 +61,52 @@ const testimonials = [
   }
 ];
 
+const fallbackCourses = [
+  {
+    title: "Sistema de ventas para cursos",
+    type: "curso",
+    description: "Storefront, pagos manuales, enrollments y acceso privado listos para operar.",
+    price: "Demo"
+  },
+  {
+    title: "Player premium para alumnos",
+    type: "programa",
+    description: "Lecciones, progreso, recursos y continuidad visual tipo app moderna.",
+    price: "Preview"
+  },
+  {
+    title: "Admin SaaS para creadores",
+    type: "template",
+    description: "Dashboard, pagos, media y alumnos con una base modular para crecer.",
+    price: "Ready"
+  }
+];
+
 function statLabel(count: number, fallback: string) {
   return count > 0 ? count.toString() : fallback;
 }
 
+async function listPublicProductsSafely(): Promise<{
+  products: Product[];
+  hasCatalogError: boolean;
+}> {
+  try {
+    return {
+      products: await listPublicProducts(),
+      hasCatalogError: false
+    };
+  } catch (error) {
+    console.error("Unable to load public product catalog for landing.", error);
+    return {
+      products: [],
+      hasCatalogError: true
+    };
+  }
+}
+
 export default async function HomePage() {
-  const [brand, products] = await Promise.all([getActiveBrandSettings(), listPublicProducts()]);
+  const [brand, catalog] = await Promise.all([getActiveBrandSettings(), listPublicProductsSafely()]);
+  const { products, hasCatalogError } = catalog;
   const showcaseProducts = products.slice(0, 3);
   const publishedCount = products.length;
 
@@ -134,7 +176,7 @@ export default async function HomePage() {
 
       <section id="plataforma" className="relative border-y border-white/10 bg-slate-950 px-4 py-14 sm:px-6 lg:px-8">
         <div className="mx-auto grid max-w-7xl gap-4 md:grid-cols-3">
-          <StatCard value={statLabel(publishedCount, "Live")} label="Cursos publicados" detail="Catalogo conectado a Supabase" />
+          <StatCard value={statLabel(publishedCount, "Ready")} label="Cursos publicados" detail={hasCatalogError ? "Showcase fallback activo" : "Catalogo conectado a Supabase"} />
           <StatCard value="RLS" label="Acceso seguro" detail="Auth, enrollments y storage privado" />
           <StatCard value="MX/LATAM" label="Pagos manuales" detail="Transferencias, DIMO y comprobantes" />
         </div>
@@ -205,9 +247,7 @@ export default async function HomePage() {
               ))}
             </div>
           ) : (
-            <div className="mt-12 rounded-lg border border-dashed border-white/16 bg-white/[0.04] p-8 text-sm text-slate-300">
-              El catalogo publico aparecera aqui cuando existan cursos publicados.
-            </div>
+            <FallbackCourseShowcase hasCatalogError={hasCatalogError} />
           )}
         </div>
       </section>
@@ -395,5 +435,48 @@ function CourseShowcaseCard({ product }: { product: Product }) {
         </div>
       </div>
     </article>
+  );
+}
+
+function FallbackCourseShowcase({ hasCatalogError }: { hasCatalogError: boolean }) {
+  return (
+    <div className="mt-12 space-y-4">
+      <div className="rounded-lg border border-white/12 bg-white/[0.05] p-5 text-sm text-slate-300 shadow-soft">
+        <p className="font-semibold text-white">
+          {hasCatalogError ? "Showcase en modo resiliente" : "Catalogo en preparacion"}
+        </p>
+        <p className="mt-2 leading-6">
+          {hasCatalogError
+            ? "La landing sigue disponible aunque el catalogo no responda. Cuando Supabase vuelva a entregar productos publicados, esta seccion mostrara cursos reales automaticamente."
+            : "Aun no hay cursos publicados. Estos placeholders mantienen la percepcion premium mientras se prepara el catalogo."}
+        </p>
+      </div>
+      <div className="grid gap-4 lg:grid-cols-3">
+        {fallbackCourses.map((course, index) => (
+          <article key={course.title} className="overflow-hidden rounded-lg border border-white/12 bg-white/[0.05] shadow-soft">
+            <div className="relative aspect-[16/10] bg-white/[0.04]">
+              <div className="absolute inset-0 bg-[radial-gradient(circle_at_30%_20%,rgba(20,184,166,0.30),transparent_30%),radial-gradient(circle_at_78%_18%,rgba(59,130,246,0.20),transparent_34%),linear-gradient(135deg,rgba(255,255,255,0.12),rgba(255,255,255,0.03))]" />
+              <div className="absolute inset-x-5 bottom-5 rounded-md border border-white/10 bg-slate-950/60 p-3 backdrop-blur">
+                <div className="h-2 w-2/3 rounded-full bg-white/35" />
+                <div className="mt-3 h-2 w-full rounded-full bg-white/10">
+                  <div className="h-full rounded-full bg-brand-accent" style={{ width: `${55 + index * 14}%` }} />
+                </div>
+              </div>
+            </div>
+            <div className="p-5">
+              <p className="text-xs font-semibold uppercase tracking-normal text-brand-accent">{course.type}</p>
+              <h3 className="mt-2 text-lg font-semibold text-white">{course.title}</h3>
+              <p className="mt-2 text-sm leading-6 text-slate-300">{course.description}</p>
+              <div className="mt-5 flex items-center justify-between gap-3">
+                <span className="text-sm font-semibold text-white">{course.price}</span>
+                <span className="inline-flex min-h-9 items-center gap-1 rounded-md border border-white/12 px-3 py-2 text-sm font-semibold text-white">
+                  Preview
+                </span>
+              </div>
+            </div>
+          </article>
+        ))}
+      </div>
+    </div>
   );
 }
