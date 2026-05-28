@@ -7,8 +7,10 @@ import {
   CreditCard,
   GraduationCap,
   Layers3,
+  LineChart,
   Package,
   Sparkles,
+  TrendingUp,
   Users
 } from "lucide-react";
 
@@ -49,6 +51,10 @@ function pluralize(count: number, singular: string, plural: string): string {
   return `${count} ${count === 1 ? singular : plural}`;
 }
 
+function clampPercent(value: number): number {
+  return Math.max(0, Math.min(100, value));
+}
+
 export default async function AdminPage() {
   const auth = await requireAdmin();
   const [courses, products, payments, students] = await Promise.all([
@@ -65,6 +71,7 @@ export default async function AdminPage() {
   const revenueMxnCents = approvedPayments.reduce((total, payment) => total + payment.order.totalMxnCents, 0);
   const totalModules = courses.reduce((total, course) => total + course.moduleCount, 0);
   const totalLessons = courses.reduce((total, course) => total + course.lessonCount, 0);
+  const publishedProducts = products.filter((product) => product.isPublished);
 
   const recentActivity: DashboardActivity[] = [
     ...courses.slice(0, 4).map((course) => ({
@@ -97,6 +104,12 @@ export default async function AdminPage() {
 
   const courseCompletion = courses.length > 0 ? Math.round((publishedCourses.length / courses.length) * 100) : 0;
   const pendingPaymentRatio = payments.length > 0 ? Math.round((pendingPayments.length / payments.length) * 100) : 0;
+  const contentDepth = courses.length > 0 ? Math.round(totalLessons / courses.length) : 0;
+  const completionRate = totalLessons > 0 ? clampPercent(Math.round((publishedCourses.length / Math.max(courses.length, 1)) * 100)) : 0;
+  const activeStudentsEstimate = Math.max(students.length - pendingPayments.length, 0);
+  const conversionSignal = payments.length > 0 ? clampPercent(Math.round((approvedPayments.length / payments.length) * 100)) : 0;
+  const revenueBars = [38, 52, 48, 66, 74, 63, revenueMxnCents > 0 ? 88 : 42];
+  const engagementBars = [28, 46, 40, 58, 71, 64, courses.length > 0 ? 82 : 36];
 
   return (
     <section className="space-y-8">
@@ -153,6 +166,17 @@ export default async function AdminPage() {
           trend="Manual LATAM"
         />
       </section>
+
+      <AnalyticsCommandCenter
+        activeStudents={activeStudentsEstimate}
+        completionRate={completionRate}
+        conversionSignal={conversionSignal}
+        engagementBars={engagementBars}
+        pendingPayments={pendingPayments.length}
+        publishedProducts={publishedProducts.length}
+        revenue={formatMxn(revenueMxnCents)}
+        revenueBars={revenueBars}
+      />
 
       <section className="grid gap-6 xl:grid-cols-[1.45fr_0.9fr]">
         <div className="space-y-6">
@@ -236,6 +260,13 @@ export default async function AdminPage() {
               </div>
             )}
           </section>
+
+          <InsightsSection
+            contentDepth={contentDepth}
+            conversionSignal={conversionSignal}
+            courseCompletion={courseCompletion}
+            pendingPayments={pendingPayments.length}
+          />
         </div>
 
         <aside className="space-y-6">
@@ -283,6 +314,194 @@ export default async function AdminPage() {
         </aside>
       </section>
     </section>
+  );
+}
+
+function AnalyticsCommandCenter({
+  activeStudents,
+  completionRate,
+  conversionSignal,
+  engagementBars,
+  pendingPayments,
+  publishedProducts,
+  revenue,
+  revenueBars
+}: {
+  activeStudents: number;
+  completionRate: number;
+  conversionSignal: number;
+  engagementBars: number[];
+  pendingPayments: number;
+  publishedProducts: number;
+  revenue: string;
+  revenueBars: number[];
+}) {
+  return (
+    <section className="overflow-hidden rounded-lg border border-white/10 bg-slate-950 text-white shadow-float">
+      <div className="grid gap-px bg-white/10 xl:grid-cols-[1.25fr_0.75fr]">
+        <div className="bg-[radial-gradient(circle_at_18%_12%,rgba(20,184,166,0.22),transparent_30%),linear-gradient(145deg,#020617,#0f172a)] p-5 sm:p-6">
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-normal text-brand-accent">Analytics</p>
+              <h2 className="mt-2 text-2xl font-semibold text-white">Command center</h2>
+              <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-300">
+                Vista ejecutiva de revenue, engagement y conversion para operar como plataforma SaaS.
+              </p>
+            </div>
+            <span className="inline-flex w-fit items-center gap-2 rounded-md border border-white/10 bg-white/[0.06] px-3 py-1.5 text-xs font-semibold text-slate-200">
+              <TrendingUp aria-hidden className="h-4 w-4 text-brand-accent" />
+              Live preview
+            </span>
+          </div>
+
+          <div className="mt-6 grid gap-3 md:grid-cols-3">
+            <DarkStat label="Revenue aprobado" value={revenue} detail="+18.4% mock trend" />
+            <DarkStat label="Alumnos activos" value={activeStudents.toString()} detail="Cohorte estimada" />
+            <DarkStat label="Conversion" value={`${conversionSignal}%`} detail="Pagos aprobados" />
+          </div>
+
+          <div className="mt-6 grid gap-4 lg:grid-cols-2">
+            <ChartCard
+              bars={revenueBars}
+              label="Sales overview"
+              meta={`${pendingPayments} pagos por revisar`}
+              title="Revenue velocity"
+            />
+            <ChartCard
+              bars={engagementBars}
+              label="Engagement"
+              meta={`${completionRate}% completion signal`}
+              title="Learning activity"
+            />
+          </div>
+        </div>
+
+        <aside className="bg-slate-950 p-5 sm:p-6">
+          <div className="flex items-center gap-3">
+            <span className="flex h-11 w-11 items-center justify-center rounded-md border border-white/10 bg-white/[0.06] text-brand-accent">
+              <LineChart aria-hidden className="h-5 w-5" />
+            </span>
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-normal text-slate-500">Signals</p>
+              <h3 className="font-semibold text-white">Platform pulse</h3>
+            </div>
+          </div>
+          <div className="mt-6 space-y-3">
+            <SignalRow label="Productos publicados" value={publishedProducts.toString()} tone="good" />
+            <SignalRow label="Completion readiness" value={`${completionRate}%`} tone={completionRate > 50 ? "good" : "watch"} />
+            <SignalRow label="Revenue review queue" value={pendingPayments.toString()} tone={pendingPayments > 0 ? "watch" : "good"} />
+            <SignalRow label="Data confidence" value="Mock + real" tone="neutral" />
+          </div>
+        </aside>
+      </div>
+    </section>
+  );
+}
+
+function DarkStat({ label, value, detail }: { label: string; value: string; detail: string }) {
+  return (
+    <article className="rounded-lg border border-white/10 bg-white/[0.06] p-4">
+      <p className="text-sm text-slate-400">{label}</p>
+      <p className="mt-2 text-2xl font-semibold text-white">{value}</p>
+      <p className="mt-2 text-xs font-medium text-brand-accent">{detail}</p>
+    </article>
+  );
+}
+
+function ChartCard({ bars, label, meta, title }: { bars: number[]; label: string; meta: string; title: string }) {
+  return (
+    <article className="rounded-lg border border-white/10 bg-white/[0.05] p-4">
+      <div className="flex items-center justify-between gap-3">
+        <div>
+          <p className="text-xs font-semibold uppercase tracking-normal text-brand-accent">{label}</p>
+          <h3 className="mt-1 font-semibold text-white">{title}</h3>
+        </div>
+        <p className="text-xs text-slate-400">{meta}</p>
+      </div>
+      <div className="mt-5 flex h-32 items-end gap-2">
+        {bars.map((bar, index) => (
+          <div key={`${title}-${index}`} className="flex flex-1 items-end rounded-t-md bg-white/[0.06]">
+            <div
+              className="w-full rounded-t-md bg-gradient-to-t from-brand-primary to-brand-accent"
+              style={{ height: `${bar}%` }}
+            />
+          </div>
+        ))}
+      </div>
+    </article>
+  );
+}
+
+function SignalRow({ label, value, tone }: { label: string; value: string; tone: "good" | "watch" | "neutral" }) {
+  const toneClass = tone === "good" ? "bg-emerald-400/10 text-emerald-300" : tone === "watch" ? "bg-amber-400/10 text-amber-300" : "bg-white/10 text-slate-300";
+
+  return (
+    <div className="flex items-center justify-between gap-3 rounded-md border border-white/10 bg-white/[0.04] px-3 py-2 text-sm">
+      <span className="text-slate-300">{label}</span>
+      <span className={`rounded-md px-2 py-1 text-xs font-semibold ${toneClass}`}>{value}</span>
+    </div>
+  );
+}
+
+function InsightsSection({
+  contentDepth,
+  conversionSignal,
+  courseCompletion,
+  pendingPayments
+}: {
+  contentDepth: number;
+  conversionSignal: number;
+  courseCompletion: number;
+  pendingPayments: number;
+}) {
+  return (
+    <section className="rounded-lg border border-line-subtle bg-surface-base p-5 shadow-soft">
+      <div>
+        <p className="text-xs font-semibold uppercase tracking-normal text-brand-primary">Insights</p>
+        <h2 className="mt-1 text-lg font-semibold text-ink-primary">Recomendaciones inteligentes</h2>
+      </div>
+      <div className="mt-5 grid gap-3 md:grid-cols-2">
+        <InsightCard
+          icon={Sparkles}
+          title="Profundidad de contenido"
+          value={`${contentDepth} lecciones/curso`}
+          description="Mantener cada curso con una ruta clara ayuda a sostener engagement."
+        />
+        <InsightCard
+          icon={TrendingUp}
+          title="Conversion operativa"
+          value={`${conversionSignal}%`}
+          description="La tasa sube cuando los comprobantes pendientes se revisan el mismo dia."
+        />
+        <InsightCard
+          icon={BookOpen}
+          title="Readiness editorial"
+          value={`${courseCompletion}%`}
+          description="Publica drafts o completa storefront para mejorar percepcion comercial."
+        />
+        <InsightCard
+          icon={CreditCard}
+          title="Queue de pagos"
+          value={pendingPayments.toString()}
+          description="Los pagos pendientes son la accion de mayor impacto en revenue inmediato."
+        />
+      </div>
+    </section>
+  );
+}
+
+function InsightCard({ icon: Icon, title, value, description }: { icon: typeof BookOpen; title: string; value: string; description: string }) {
+  return (
+    <article className="rounded-md border border-line-subtle bg-surface-raised p-4">
+      <div className="flex items-start justify-between gap-4">
+        <span className="flex h-10 w-10 items-center justify-center rounded-md bg-brand-primary/10 text-brand-primary">
+          <Icon aria-hidden className="h-5 w-5" />
+        </span>
+        <p className="text-lg font-semibold text-ink-primary">{value}</p>
+      </div>
+      <h3 className="mt-4 font-semibold text-ink-primary">{title}</h3>
+      <p className="mt-2 text-sm leading-6 text-ink-secondary">{description}</p>
+    </article>
   );
 }
 
