@@ -12,11 +12,12 @@ const initialState: AuthActionState = {
   message: ""
 };
 
-export function LoginForm() {
+export function LoginForm({ nextPath = "/mis-productos" }: { nextPath?: string }) {
   const [state, formAction] = useActionState(loginAction, initialState);
 
   return (
     <form action={formAction} className="space-y-4">
+      <input type="hidden" name="next" value={nextPath} />
       <label className="block text-sm font-medium text-slate-700">
         Correo
         <input

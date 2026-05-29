@@ -4,12 +4,13 @@ import type { ReactNode } from "react";
 import { useMemo, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { ChevronRight, Menu, Search, X } from "lucide-react";
+import { ChevronRight, LogOut, Menu, Search, X } from "lucide-react";
 
 import { BrandMark } from "@/components/layout/brand-mark";
 import type { DashboardNavGroup } from "@/components/layout/dashboard-navigation";
 import type { BrandSettings } from "@/lib/engines/branding/types";
 import type { Profile } from "@/lib/engines/auth/types";
+import { logoutAction } from "@/lib/engines/auth/actions";
 
 type DashboardShellProps = {
   brand: BrandSettings;
@@ -131,6 +132,27 @@ function NavigationContent({
   );
 }
 
+function LogoutForm({ compact }: { compact?: boolean }) {
+  return (
+    <form action={logoutAction}>
+      <button
+        type="submit"
+        className={`group flex min-h-10 w-full items-center gap-3 rounded-md px-2.5 py-2 text-sm text-ink-secondary transition hover:bg-surface-muted hover:text-ink-primary ${
+          compact ? "justify-center" : ""
+        }`}
+      >
+        <LogOut aria-hidden className="h-4 w-4 shrink-0 text-ink-muted group-hover:text-ink-primary" />
+        {compact ? null : (
+          <span className="min-w-0">
+            <span className="block truncate font-medium">Cerrar sesion</span>
+            <span className="block truncate text-xs text-ink-muted">Salir de este workspace</span>
+          </span>
+        )}
+      </button>
+    </form>
+  );
+}
+
 export function DashboardShell({ brand, profile, navigation, children }: DashboardShellProps) {
   const pathname = usePathname();
   const [mobileOpen, setMobileOpen] = useState(false);
@@ -143,6 +165,9 @@ export function DashboardShell({ brand, profile, navigation, children }: Dashboa
           <BrandMark brand={brand} />
         </div>
         <NavigationContent navigation={navigation} pathname={pathname} />
+        <div className="absolute inset-x-4 bottom-5 border-t border-line-subtle pt-4">
+          <LogoutForm />
+        </div>
       </aside>
 
       {mobileOpen ? (
@@ -166,6 +191,9 @@ export function DashboardShell({ brand, profile, navigation, children }: Dashboa
               </button>
             </div>
             <NavigationContent navigation={navigation} pathname={pathname} onNavigate={() => setMobileOpen(false)} />
+            <div className="mt-6 border-t border-line-subtle pt-4">
+              <LogoutForm />
+            </div>
           </aside>
         </div>
       ) : null}
@@ -195,6 +223,9 @@ export function DashboardShell({ brand, profile, navigation, children }: Dashboa
               </div>
               <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md bg-ink-primary text-xs font-semibold text-surface-base">
                 {initials || "U"}
+              </div>
+              <div className="hidden sm:block xl:hidden">
+                <LogoutForm compact />
               </div>
             </div>
           </div>

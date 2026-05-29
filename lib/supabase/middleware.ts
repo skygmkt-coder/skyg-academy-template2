@@ -4,8 +4,14 @@ import { NextResponse, type NextRequest } from "next/server";
 import type { Database } from "@/lib/supabase/types";
 import { getSupabaseServerEnv } from "@/lib/supabase/env-server";
 
-const protectedPrefixes = ["/admin", "/mis-productos", "/aprender", "/checkout"];
+const protectedPrefixes = ["/admin", "/mis-productos", "/aprender", "/learn", "/checkout", "/onboarding"];
 const authPrefixes = ["/login", "/registro", "/recuperar"];
+
+function safeNextPath(value: string | null): string | null {
+  if (!value?.startsWith("/") || value.startsWith("//")) return null;
+  if (authPrefixes.some((prefix) => value === prefix || value.startsWith(`${prefix}?`))) return null;
+  return value;
+}
 
 export async function updateSession(request: NextRequest) {
   let response = NextResponse.next({ request });
@@ -41,15 +47,14 @@ export async function updateSession(request: NextRequest) {
   if (isProtected && !user) {
     const redirectUrl = request.nextUrl.clone();
     redirectUrl.pathname = "/login";
-    redirectUrl.searchParams.set("next", pathname);
+    redirectUrl.search = "";
+    redirectUrl.searchParams.set("next", `${pathname}${request.nextUrl.search}`);
     return NextResponse.redirect(redirectUrl);
   }
 
   if (isAuthPage && user) {
-    const redirectUrl = request.nextUrl.clone();
-    redirectUrl.pathname = "/mis-productos";
-    redirectUrl.search = "";
-    return NextResponse.redirect(redirectUrl);
+    const target = safeNextPath(request.nextUrl.searchParams.get("next")) ?? "/mis-productos";
+    return NextResponse.redirect(new URL(target, request.nextUrl.origin));
   }
 
   return response;

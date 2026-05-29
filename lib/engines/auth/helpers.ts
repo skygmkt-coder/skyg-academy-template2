@@ -4,6 +4,15 @@ import { createClient } from "@/lib/supabase/server";
 import { getProfileById } from "@/lib/engines/auth/repository";
 import type { AuthenticatedUser, Profile } from "@/lib/engines/auth/types";
 
+function fallbackProfile(user: AuthenticatedUser["user"]): Profile {
+  return {
+    id: user.id,
+    email: user.email ?? "",
+    fullName: null,
+    role: "student"
+  };
+}
+
 export async function getOptionalUser(): Promise<AuthenticatedUser | null> {
   const supabase = await createClient();
   const {
@@ -15,7 +24,7 @@ export async function getOptionalUser(): Promise<AuthenticatedUser | null> {
   }
 
   const profile = await getProfileById(user.id);
-  return profile ? { user, profile } : null;
+  return { user, profile: profile ?? fallbackProfile(user) };
 }
 
 export async function requireUser(): Promise<AuthenticatedUser> {
