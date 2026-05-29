@@ -88,9 +88,9 @@ export function getDashboardNavigation(profile: Profile): DashboardNavGroup[] {
       label: "Sistema",
       items: [
         {
-          href: "/admin/cursos",
+          href: "/admin/settings",
           label: "Configuracion",
-          description: "Base SaaS",
+          description: "Workspace y marca",
           icon: Settings
         }
       ]
