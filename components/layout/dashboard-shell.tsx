@@ -20,6 +20,7 @@ type DashboardShellProps = {
 
 const breadcrumbLabels: Record<string, string> = {
   admin: "Admin",
+  crm: "AI CRM",
   cursos: "Cursos",
   productos: "Productos",
   pagos: "Pagos",

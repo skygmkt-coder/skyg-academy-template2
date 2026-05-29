@@ -1,5 +1,6 @@
 import type { ComponentType } from "react";
 import {
+  Bot,
   BookOpen,
   CreditCard,
   GraduationCap,
@@ -66,6 +67,12 @@ export function getDashboardNavigation(profile: Profile): DashboardNavGroup[] {
           label: "Pagos",
           description: "Comprobantes manuales",
           icon: CreditCard
+        },
+        {
+          href: "/admin/crm",
+          label: "AI CRM",
+          description: "Leads y automatizaciones",
+          icon: Bot
         }
       ]
     },
