@@ -4,10 +4,25 @@ import type { ReactNode } from "react";
 import { useMemo, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { ChevronRight, LogOut, Menu, Search, X } from "lucide-react";
+import {
+  Bot,
+  BookOpen,
+  ChevronRight,
+  CreditCard,
+  GraduationCap,
+  LayoutDashboard,
+  LogOut,
+  Menu,
+  Package,
+  Rocket,
+  Search,
+  Settings,
+  X,
+  type LucideIcon
+} from "lucide-react";
 
 import { BrandMark } from "@/components/layout/brand-mark";
-import type { DashboardNavGroup } from "@/components/layout/dashboard-navigation";
+import type { DashboardNavGroup, DashboardNavIcon } from "@/components/layout/dashboard-navigation";
 import type { BrandSettings } from "@/lib/engines/branding/types";
 import type { Profile } from "@/lib/engines/auth/types";
 import { logoutAction } from "@/lib/engines/auth/actions";
@@ -29,6 +44,17 @@ const breadcrumbLabels: Record<string, string> = {
   learn: "Aprender",
   onboarding: "Onboarding",
   settings: "Settings"
+};
+
+const navIcons: Record<DashboardNavIcon, LucideIcon> = {
+  bot: Bot,
+  book: BookOpen,
+  "credit-card": CreditCard,
+  "graduation-cap": GraduationCap,
+  "layout-dashboard": LayoutDashboard,
+  package: Package,
+  rocket: Rocket,
+  settings: Settings
 };
 
 function isActivePath(pathname: string, href: string) {
@@ -97,7 +123,7 @@ function NavigationContent({
           <div className="space-y-1">
             {group.items.map((item) => {
               const active = isActivePath(pathname, item.href);
-              const Icon = item.icon;
+              const Icon = navIcons[item.icon];
 
               return (
                 <Link
