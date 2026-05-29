@@ -12,6 +12,7 @@ import {
 } from "@/lib/engines/auth/validation";
 import {
   sendPasswordRecovery,
+  signOut,
   signInWithPassword,
   signUpWithPassword
 } from "@/lib/engines/auth/service";
@@ -24,6 +25,14 @@ const errorState = (message: string): AuthActionState => ({
 function formValue(formData: FormData, key: string): string {
   const value = formData.get(key);
   return typeof value === "string" ? value : "";
+}
+
+function safeNextPath(value: string): string {
+  if (!value.startsWith("/") || value.startsWith("//")) return "/mis-productos";
+  if (["/login", "/registro", "/recuperar"].some((path) => value === path || value.startsWith(`${path}?`))) {
+    return "/mis-productos";
+  }
+  return value;
 }
 
 async function getOrigin(): Promise<string> {
@@ -54,8 +63,13 @@ export async function loginAction(
     return errorState(error instanceof Error ? error.message : "No pudimos iniciar sesion.");
   }
 
+  const nextPath = safeNextPath(formValue(formData, "next"));
   revalidatePath("/", "layout");
-  redirect("/mis-productos");
+  redirect(nextPath);
+}
+
+export async function logoutAction(): Promise<void> {
+  await signOut();
 }
 
 export async function registerAction(
