@@ -1,22 +1,12 @@
-import type { ComponentType } from "react";
-import {
-  Bot,
-  BookOpen,
-  CreditCard,
-  GraduationCap,
-  LayoutDashboard,
-  Package,
-  Rocket,
-  Settings
-} from "lucide-react";
-
 import type { Profile } from "@/lib/engines/auth/types";
+
+export type DashboardNavIcon = "bot" | "book" | "credit-card" | "graduation-cap" | "layout-dashboard" | "package" | "rocket" | "settings";
 
 export type DashboardNavItem = {
   href: string;
   label: string;
   description?: string;
-  icon: ComponentType<{ className?: string; "aria-hidden"?: boolean }>;
+  icon: DashboardNavIcon;
 };
 
 export type DashboardNavGroup = {
@@ -32,13 +22,13 @@ export function getDashboardNavigation(profile: Profile): DashboardNavGroup[] {
         href: "/mis-productos",
         label: "Mis productos",
         description: "Cursos y accesos activos",
-        icon: GraduationCap
+        icon: "graduation-cap"
       },
       {
         href: "/onboarding",
         label: "Onboarding",
         description: "Setup guiado",
-        icon: Rocket
+        icon: "rocket"
       }
     ]
   };
@@ -55,31 +45,31 @@ export function getDashboardNavigation(profile: Profile): DashboardNavGroup[] {
           href: "/admin",
           label: "Dashboard",
           description: "Vista general",
-          icon: LayoutDashboard
+          icon: "layout-dashboard"
         },
         {
           href: "/admin/cursos",
           label: "Cursos",
           description: "Contenido y alumnos",
-          icon: BookOpen
+          icon: "book"
         },
         {
           href: "/admin/productos",
           label: "Productos",
           description: "Catalogo legacy",
-          icon: Package
+          icon: "package"
         },
         {
           href: "/admin/pagos",
           label: "Pagos",
           description: "Comprobantes manuales",
-          icon: CreditCard
+          icon: "credit-card"
         },
         {
           href: "/admin/crm",
           label: "AI CRM",
           description: "Leads y automatizaciones",
-          icon: Bot
+          icon: "bot"
         }
       ]
     },
@@ -91,7 +81,7 @@ export function getDashboardNavigation(profile: Profile): DashboardNavGroup[] {
           href: "/admin/settings",
           label: "Configuracion",
           description: "Workspace y marca",
-          icon: Settings
+          icon: "settings"
         }
       ]
     }
