@@ -5,6 +5,7 @@ import {
   GraduationCap,
   LayoutDashboard,
   Package,
+  Rocket,
   Settings
 } from "lucide-react";
 
@@ -31,6 +32,12 @@ export function getDashboardNavigation(profile: Profile): DashboardNavGroup[] {
         label: "Mis productos",
         description: "Cursos y accesos activos",
         icon: GraduationCap
+      },
+      {
+        href: "/onboarding",
+        label: "Onboarding",
+        description: "Setup guiado",
+        icon: Rocket
       }
     ]
   };

@@ -9,6 +9,7 @@ import {
   Layers3,
   LineChart,
   Package,
+  Rocket,
   Sparkles,
   TrendingUp,
   Users
@@ -308,6 +309,7 @@ export default async function AdminPage() {
               <QuickAction href="/admin/cursos" icon={BookOpen} title="Crear o editar cursos" description="Contenido, media y alumnos." />
               <QuickAction href="/admin/pagos" icon={CreditCard} title="Aprobar comprobantes" description="Validacion manual de pagos." />
               <QuickAction href="/admin/productos" icon={Package} title="Gestionar catalogo" description="Productos legacy y precios." />
+              <QuickAction href="/onboarding" icon={Rocket} title="Completar onboarding" description="Setup guiado y primeras acciones." />
               <QuickAction href="/mis-productos" icon={GraduationCap} title="Ver experiencia alumno" description="Validar acceso como estudiante." />
             </div>
           </section>

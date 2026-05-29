@@ -24,7 +24,8 @@ const breadcrumbLabels: Record<string, string> = {
   productos: "Productos",
   pagos: "Pagos",
   "mis-productos": "Mis productos",
-  learn: "Aprender"
+  learn: "Aprender",
+  onboarding: "Onboarding"
 };
 
 function isActivePath(pathname: string, href: string) {
