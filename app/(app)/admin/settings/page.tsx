@@ -13,6 +13,7 @@ import {
   Mail,
   Palette,
   PlugZap,
+  Scale,
   ShieldCheck,
   SlidersHorizontal,
   Sparkles,
@@ -31,6 +32,7 @@ type SettingsSection = {
   title: string;
   description: string;
   icon: ComponentType<{ className?: string; "aria-hidden"?: boolean }>;
+  href?: string;
 };
 
 type Integration = {
@@ -64,6 +66,13 @@ const sections: SettingsSection[] = [
     title: "Seguridad",
     description: "Acceso, permisos y controles enterprise.",
     icon: ShieldCheck
+  },
+  {
+    id: "legal",
+    title: "Legal",
+    description: "Razon social, terminos, privacidad y avisos.",
+    icon: Scale,
+    href: "/admin/settings/legal"
   }
 ];
 
@@ -203,7 +212,7 @@ function SettingsNavCard({ section }: { section: SettingsSection }) {
   const Icon = section.icon;
 
   return (
-    <a href={`#${section.id}`} className="group flex gap-3 rounded-lg border border-line-subtle bg-surface-base p-4 shadow-soft transition hover:border-brand-primary/40">
+    <a href={section.href ?? `#${section.id}`} className="group flex gap-3 rounded-lg border border-line-subtle bg-surface-base p-4 shadow-soft transition hover:border-brand-primary/40">
       <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-md bg-brand-primary/10 text-brand-primary">
         <Icon aria-hidden className="h-5 w-5" />
       </span>

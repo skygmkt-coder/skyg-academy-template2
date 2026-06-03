@@ -3,4 +3,18 @@ export type BrandSettings = {
   logoUrl: string | null;
   primaryColor: string;
   accentColor: string;
+  legalName: string;
+  taxId: string;
+  country: string;
+  state: string;
+  address: string;
+  legalEmail: string;
+  privacyPolicy: string;
+  termsConditions: string;
+  cookiesPolicy: string;
+  legalNotice: string;
+  privacyUpdatedAt: string;
+  termsUpdatedAt: string;
+  cookiesUpdatedAt: string;
+  legalNoticeUpdatedAt: string;
 };
