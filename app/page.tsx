@@ -14,6 +14,7 @@ import {
 } from "lucide-react";
 
 import { LandingMobileMenu } from "@/components/landing/landing-mobile-menu";
+import { PublicFooter } from "@/components/legal/public-footer";
 import { getActiveBrandSettings } from "@/lib/engines/branding/service";
 import { formatMxn } from "@/lib/engines/catalog/helpers";
 import { listPublicProducts } from "@/lib/engines/catalog/service";
@@ -252,21 +253,7 @@ export default async function HomePage() {
         </div>
       </section>
 
-      <footer className="border-t border-white/10 bg-slate-950 px-4 py-10 text-slate-400 sm:px-6 lg:px-8">
-        <div className="mx-auto flex max-w-7xl flex-col gap-6 sm:flex-row sm:items-center sm:justify-between">
-          <div>
-            <p className="text-sm font-semibold text-white">{brand.brandName}</p>
-            <p className="mt-1 text-sm">Premium academy infrastructure for modern teams.</p>
-          </div>
-          <div className="flex flex-wrap gap-4 text-sm">
-            {navLinks.map((link) => (
-              <Link key={link.href} href={link.href} className="hover:text-white">
-                {link.label}
-              </Link>
-            ))}
-          </div>
-        </div>
-      </footer>
+      <PublicFooter brand={brand} navigationLinks={navLinks} />
     </main>
   );
 }
