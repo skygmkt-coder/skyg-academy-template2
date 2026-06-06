@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { BookOpen, Layers, Plus, ScrollText } from "lucide-react";
+import { BookOpen, KeyRound, Layers, Plus, ScrollText, Users } from "lucide-react";
 
 import { PageHeader } from "@/components/layout/page-header";
 import { createCourseDraftAction } from "@/lib/courses/actions";
@@ -96,6 +96,20 @@ export default async function AdminCoursesPage() {
                   </div>
                   <p className="mt-1">Lecciones</p>
                 </div>
+              </div>
+              <div className="mt-5 flex flex-wrap gap-2">
+                <span className="inline-flex min-h-9 items-center gap-1 rounded-md border border-line-subtle bg-surface-base px-3 py-2 text-sm font-semibold text-ink-secondary">
+                  <BookOpen aria-hidden className="h-4 w-4" />
+                  Contenido
+                </span>
+                <span className="inline-flex min-h-9 items-center gap-1 rounded-md border border-line-subtle bg-surface-base px-3 py-2 text-sm font-semibold text-ink-secondary">
+                  <Users aria-hidden className="h-4 w-4" />
+                  Alumnos
+                </span>
+                <span className="inline-flex min-h-9 items-center gap-1 rounded-md border border-line-subtle bg-surface-base px-3 py-2 text-sm font-semibold text-ink-secondary">
+                  <KeyRound aria-hidden className="h-4 w-4" />
+                  Acceso
+                </span>
               </div>
             </Link>
           ))}

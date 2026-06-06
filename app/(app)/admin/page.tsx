@@ -29,7 +29,7 @@ type DashboardActivity = {
   description: string;
   href: string;
   createdAt: string;
-  tone: "course" | "payment" | "product";
+  tone: "admin" | "enrollment" | "payment";
 };
 
 function formatCompactDate(value: string): string {
@@ -77,27 +77,27 @@ export default async function AdminPage() {
   const recentActivity: DashboardActivity[] = [
     ...courses.slice(0, 4).map((course) => ({
       id: `course-${course.id}`,
-      title: course.title,
-      description: `${course.isPublished ? "Publicado" : "Draft"} - ${pluralize(course.lessonCount, "leccion", "lecciones")}`,
+      title: `Curso actualizado: ${course.title}`,
+      description: `Admin action - ${course.isPublished ? "Publicado" : "Draft"} - ${pluralize(course.lessonCount, "leccion", "lecciones")}`,
       href: `/admin/cursos/${course.id}`,
       createdAt: course.updatedAt,
-      tone: "course" as const
+      tone: "admin" as const
     })),
     ...payments.slice(0, 4).map((payment) => ({
       id: `payment-${payment.id}`,
-      title: payment.order.product?.title ?? "Pago manual",
-      description: `${payment.status} - ${payment.order.student?.email ?? "Alumno sin perfil"}`,
+      title: payment.status === "approved" ? "Enrollment aprobado por pago" : "Comprobante recibido",
+      description: `${payment.order.product?.title ?? "Pago manual"} - ${payment.order.student?.email ?? "Alumno sin perfil"}`,
       href: "/admin/pagos",
       createdAt: payment.updatedAt,
-      tone: "payment" as const
+      tone: payment.status === "approved" ? "enrollment" as const : "payment" as const
     })),
     ...products.slice(0, 3).map((product) => ({
       id: `product-${product.id}`,
-      title: product.title,
-      description: `${product.isPublished ? "Publicado" : "Draft"} - ${formatMxn(product.priceMxnCents)}`,
+      title: `Producto ${product.isPublished ? "publicado" : "en draft"}`,
+      description: `${product.title} - ${formatMxn(product.priceMxnCents)}`,
       href: `/admin/productos/${product.id}`,
       createdAt: product.updatedAt,
-      tone: "product" as const
+      tone: "admin" as const
     }))
   ]
     .toSorted((first, second) => new Date(second.createdAt).getTime() - new Date(first.createdAt).getTime())
@@ -109,8 +109,9 @@ export default async function AdminPage() {
   const completionRate = totalLessons > 0 ? clampPercent(Math.round((publishedCourses.length / Math.max(courses.length, 1)) * 100)) : 0;
   const activeStudentsEstimate = Math.max(students.length - pendingPayments.length, 0);
   const conversionSignal = payments.length > 0 ? clampPercent(Math.round((approvedPayments.length / payments.length) * 100)) : 0;
-  const revenueBars = [38, 52, 48, 66, 74, 63, revenueMxnCents > 0 ? 88 : 42];
-  const engagementBars = [28, 46, 40, 58, 71, 64, courses.length > 0 ? 82 : 36];
+  const reviewQueueDepth = Math.min(100, pendingPayments.length * 18);
+  const revenueBars = [22, 34, 48, 55, 62, 74, revenueMxnCents > 0 ? 88 : 18];
+  const engagementBars = [18, 32, 44, 51, 63, 72, courses.length > 0 ? 82 : 18];
 
   return (
     <section className="space-y-8">
@@ -137,8 +138,17 @@ export default async function AdminPage() {
         }
       />
 
+      <section className="grid gap-3 md:grid-cols-3 xl:grid-cols-5">
+        <QuickAction href="/admin/pagos" icon={CreditCard} title="Revisar pagos" description={`${pendingPayments.length} pendientes`} />
+        <QuickAction href="/admin/cursos" icon={BookOpen} title="Gestionar cursos" description={`${courses.length} cursos`} />
+        <QuickAction href="/admin/productos" icon={Package} title="Editar catalogo" description={`${products.length} productos`} />
+        <QuickAction href="/onboarding" icon={Rocket} title="Checklist setup" description="Activacion operativa" />
+        <QuickAction href="/admin/settings" icon={GraduationCap} title="Configurar workspace" description="Marca, legal y seguridad" />
+      </section>
+
       <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
         <MetricCard
+          href="/admin/cursos"
           icon={BookOpen}
           label="Cursos"
           value={courses.length.toString()}
@@ -146,6 +156,7 @@ export default async function AdminPage() {
           trend={`${courseCompletion}% publicados`}
         />
         <MetricCard
+          href="/mis-productos"
           icon={Users}
           label="Alumnos"
           value={students.length.toString()}
@@ -153,6 +164,7 @@ export default async function AdminPage() {
           trend="Acceso y enrollments"
         />
         <MetricCard
+          href="/admin/pagos"
           icon={CreditCard}
           label="Pagos pendientes"
           value={pendingPayments.length.toString()}
@@ -160,6 +172,7 @@ export default async function AdminPage() {
           trend={`${pendingPaymentRatio}% por revisar`}
         />
         <MetricCard
+          href="/admin/pagos"
           icon={Sparkles}
           label="Ingresos aprobados"
           value={formatMxn(revenueMxnCents)}
@@ -175,6 +188,7 @@ export default async function AdminPage() {
         engagementBars={engagementBars}
         pendingPayments={pendingPayments.length}
         publishedProducts={publishedProducts.length}
+        reviewQueueDepth={reviewQueueDepth}
         revenue={formatMxn(revenueMxnCents)}
         revenueBars={revenueBars}
       />
@@ -287,7 +301,7 @@ export default async function AdminPage() {
                 {recentActivity.map((activity) => (
                   <li key={activity.id}>
                     <Link href={activity.href} className="flex gap-3 rounded-md p-2 transition hover:bg-surface-muted">
-                      <span className={`mt-0.5 h-2.5 w-2.5 shrink-0 rounded-full ${activity.tone === "payment" ? "bg-brand-accent" : activity.tone === "product" ? "bg-semantic-warning" : "bg-brand-primary"}`} />
+                      <span className={`mt-0.5 h-2.5 w-2.5 shrink-0 rounded-full ${activity.tone === "payment" ? "bg-brand-accent" : activity.tone === "enrollment" ? "bg-semantic-success" : "bg-brand-primary"}`} />
                       <span className="min-w-0 flex-1">
                         <span className="block truncate text-sm font-semibold text-ink-primary">{activity.title}</span>
                         <span className="block truncate text-sm text-ink-secondary">{activity.description}</span>
@@ -303,14 +317,16 @@ export default async function AdminPage() {
           <section className="rounded-lg border border-line-subtle bg-surface-base p-5 shadow-soft">
             <div>
               <p className="text-xs font-semibold uppercase tracking-normal text-brand-primary">Accesos rapidos</p>
-              <h2 className="mt-1 text-lg font-semibold text-ink-primary">Siguiente accion</h2>
+              <h2 className="mt-1 text-lg font-semibold text-ink-primary">Next recommended action</h2>
             </div>
             <div className="mt-5 grid gap-3">
-              <QuickAction href="/admin/cursos" icon={BookOpen} title="Crear o editar cursos" description="Contenido, media y alumnos." />
-              <QuickAction href="/admin/pagos" icon={CreditCard} title="Aprobar comprobantes" description="Validacion manual de pagos." />
-              <QuickAction href="/admin/productos" icon={Package} title="Gestionar catalogo" description="Productos legacy y precios." />
-              <QuickAction href="/onboarding" icon={Rocket} title="Completar onboarding" description="Setup guiado y primeras acciones." />
-              <QuickAction href="/mis-productos" icon={GraduationCap} title="Ver experiencia alumno" description="Validar acceso como estudiante." />
+              {pendingPayments.length > 0 ? (
+                <QuickAction href="/admin/pagos" icon={CreditCard} title="Aprobar comprobantes" description="Accion prioritaria para desbloquear acceso." />
+              ) : draftCourses > 0 ? (
+                <QuickAction href="/admin/cursos" icon={BookOpen} title="Publicar drafts" description="Completa cursos antes de venderlos." />
+              ) : (
+                <QuickAction href="/onboarding" icon={Rocket} title="Completar checklist" description="Revisa la operacion minima del workspace." />
+              )}
             </div>
           </section>
         </aside>
@@ -326,6 +342,7 @@ function AnalyticsCommandCenter({
   engagementBars,
   pendingPayments,
   publishedProducts,
+  reviewQueueDepth,
   revenue,
   revenueBars
 }: {
@@ -335,6 +352,7 @@ function AnalyticsCommandCenter({
   engagementBars: number[];
   pendingPayments: number;
   publishedProducts: number;
+  reviewQueueDepth: number;
   revenue: string;
   revenueBars: number[];
 }) {
@@ -347,12 +365,12 @@ function AnalyticsCommandCenter({
               <p className="text-xs font-semibold uppercase tracking-normal text-brand-accent">Analytics</p>
               <h2 className="mt-2 text-2xl font-semibold text-white">Command center</h2>
               <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-300">
-                Vista ejecutiva de revenue, engagement y conversion para operar como plataforma SaaS.
+                Snapshot operativo: combina metricas reales disponibles con tendencias visuales marcadas como estimadas.
               </p>
             </div>
             <span className="inline-flex w-fit items-center gap-2 rounded-md border border-white/10 bg-white/[0.06] px-3 py-1.5 text-xs font-semibold text-slate-200">
               <TrendingUp aria-hidden className="h-4 w-4 text-brand-accent" />
-              Live preview
+              Operational preview
             </span>
           </div>
 
@@ -367,13 +385,13 @@ function AnalyticsCommandCenter({
               bars={revenueBars}
               label="Sales overview"
               meta={`${pendingPayments} pagos por revisar`}
-              title="Revenue velocity"
+              title="Revenue review queue"
             />
             <ChartCard
               bars={engagementBars}
               label="Engagement"
-              meta={`${completionRate}% completion signal`}
-              title="Learning activity"
+              meta={`${completionRate}% readiness`}
+              title="Content readiness"
             />
           </div>
         </div>
@@ -392,7 +410,7 @@ function AnalyticsCommandCenter({
             <SignalRow label="Productos publicados" value={publishedProducts.toString()} tone="good" />
             <SignalRow label="Completion readiness" value={`${completionRate}%`} tone={completionRate > 50 ? "good" : "watch"} />
             <SignalRow label="Revenue review queue" value={pendingPayments.toString()} tone={pendingPayments > 0 ? "watch" : "good"} />
-            <SignalRow label="Data confidence" value="Mock + real" tone="neutral" />
+            <SignalRow label="Revision pendiente" value={`${reviewQueueDepth}%`} tone={reviewQueueDepth > 0 ? "watch" : "good"} />
           </div>
         </aside>
       </div>
@@ -460,7 +478,7 @@ function InsightsSection({
     <section className="rounded-lg border border-line-subtle bg-surface-base p-5 shadow-soft">
       <div>
         <p className="text-xs font-semibold uppercase tracking-normal text-brand-primary">Insights</p>
-        <h2 className="mt-1 text-lg font-semibold text-ink-primary">Recomendaciones inteligentes</h2>
+        <h2 className="mt-1 text-lg font-semibold text-ink-primary">Next recommended action</h2>
       </div>
       <div className="mt-5 grid gap-3 md:grid-cols-2">
         <InsightCard
@@ -509,19 +527,21 @@ function InsightCard({ icon: Icon, title, value, description }: { icon: typeof B
 
 function MetricCard({
   icon: Icon,
+  href,
   label,
   value,
   detail,
   trend
 }: {
   icon: typeof BookOpen;
+  href: string;
   label: string;
   value: string;
   detail: string;
   trend: string;
 }) {
   return (
-    <article className="rounded-lg border border-line-subtle bg-surface-base p-5 shadow-soft">
+    <Link href={href} className="block rounded-lg border border-line-subtle bg-surface-base p-5 shadow-soft transition hover:border-brand-primary/40 hover:bg-surface-muted">
       <div className="flex items-start justify-between gap-4">
         <div className="space-y-1">
           <p className="text-sm font-medium text-ink-muted">{label}</p>
@@ -532,8 +552,11 @@ function MetricCard({
         </span>
       </div>
       <p className="mt-4 text-sm text-ink-secondary">{detail}</p>
-      <p className="mt-2 text-xs font-medium text-brand-primary">{trend}</p>
-    </article>
+      <p className="mt-2 inline-flex items-center gap-1 text-xs font-medium text-brand-primary">
+        {trend}
+        <ArrowRight aria-hidden className="h-3.5 w-3.5" />
+      </p>
+    </Link>
   );
 }
 
