@@ -6,6 +6,11 @@ import { getSupabaseServerEnv } from "@/lib/supabase/env-server";
 
 const protectedPrefixes = ["/admin", "/mis-productos", "/aprender", "/learn", "/checkout", "/onboarding"];
 const authPrefixes = ["/login", "/registro", "/recuperar"];
+const USER_LOOKUP_TIMEOUT_MS = 2_000;
+
+function matchesPrefix(pathname: string, prefix: string): boolean {
+  return pathname === prefix || pathname.startsWith(`${prefix}/`);
+}
 
 function safeNextPath(value: string | null): string | null {
   if (!value?.startsWith("/") || value.startsWith("//")) return null;
@@ -13,8 +18,34 @@ function safeNextPath(value: string | null): string | null {
   return value;
 }
 
+function hasSupabaseAuthCookie(request: NextRequest): boolean {
+  return request.cookies
+    .getAll()
+    .some((cookie) => cookie.name.startsWith("sb-") && cookie.name.includes("auth-token"));
+}
+
+function loginRedirect(request: NextRequest): NextResponse {
+  const redirectUrl = request.nextUrl.clone();
+  redirectUrl.pathname = "/login";
+  redirectUrl.search = "";
+  redirectUrl.searchParams.set("next", `${request.nextUrl.pathname}${request.nextUrl.search}`);
+  return NextResponse.redirect(redirectUrl);
+}
+
 export async function updateSession(request: NextRequest) {
   let response = NextResponse.next({ request });
+  const pathname = request.nextUrl.pathname;
+  const isProtected = protectedPrefixes.some((prefix) => matchesPrefix(pathname, prefix));
+  const isAuthPage = authPrefixes.some((prefix) => matchesPrefix(pathname, prefix));
+
+  if (!isProtected && !isAuthPage) {
+    return response;
+  }
+
+  if (!hasSupabaseAuthCookie(request)) {
+    return isProtected ? loginRedirect(request) : response;
+  }
+
   const { url, publishableKey } = getSupabaseServerEnv();
 
   const supabase = createServerClient<Database>(
@@ -36,20 +67,14 @@ export async function updateSession(request: NextRequest) {
     }
   );
 
-  const {
-    data: { user }
-  } = await supabase.auth.getUser();
-
-  const pathname = request.nextUrl.pathname;
-  const isProtected = protectedPrefixes.some((prefix) => pathname.startsWith(prefix));
-  const isAuthPage = authPrefixes.some((prefix) => pathname.startsWith(prefix));
+  const userResult = await Promise.race([
+    supabase.auth.getUser(),
+    new Promise<null>((resolve) => setTimeout(() => resolve(null), USER_LOOKUP_TIMEOUT_MS))
+  ]);
+  const user = userResult?.data.user ?? null;
 
   if (isProtected && !user) {
-    const redirectUrl = request.nextUrl.clone();
-    redirectUrl.pathname = "/login";
-    redirectUrl.search = "";
-    redirectUrl.searchParams.set("next", `${pathname}${request.nextUrl.search}`);
-    return NextResponse.redirect(redirectUrl);
+    return loginRedirect(request);
   }
 
   if (isAuthPage && user) {
