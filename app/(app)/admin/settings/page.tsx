@@ -1,4 +1,5 @@
 import type { ComponentType, ReactNode } from "react";
+import Link from "next/link";
 import {
   ArrowRight,
   BadgeCheck,
@@ -120,14 +121,14 @@ export default async function AdminSettingsPage() {
         description="Una experiencia de configuracion premium para marca, cuenta, seguridad, integraciones y operacion enterprise."
         actions={
           <>
-            <button type="button" className="inline-flex min-h-10 items-center gap-2 rounded-md border border-line-subtle bg-surface-base px-4 py-2 text-sm font-semibold text-ink-secondary shadow-soft">
+            <Link href="/admin/settings/legal" className="inline-flex min-h-10 items-center gap-2 rounded-md border border-line-subtle bg-surface-base px-4 py-2 text-sm font-semibold text-ink-secondary shadow-soft">
               <SlidersHorizontal aria-hidden className="h-4 w-4" />
-              Preferencias
-            </button>
-            <button type="button" className="inline-flex min-h-10 items-center gap-2 rounded-md bg-ink-primary px-4 py-2 text-sm font-semibold text-surface-base shadow-soft">
-              Guardar cambios
+              Legal settings
+            </Link>
+            <Link href="/admin/settings/legal" className="inline-flex min-h-10 items-center gap-2 rounded-md bg-ink-primary px-4 py-2 text-sm font-semibold text-surface-base shadow-soft">
+              Editar configuracion real
               <ArrowRight aria-hidden className="h-4 w-4" />
-            </button>
+            </Link>
           </>
         }
       />
@@ -210,18 +211,32 @@ export default async function AdminSettingsPage() {
 
 function SettingsNavCard({ section }: { section: SettingsSection }) {
   const Icon = section.icon;
-
-  return (
-    <a href={section.href ?? `#${section.id}`} className="group flex gap-3 rounded-lg border border-line-subtle bg-surface-base p-4 shadow-soft transition hover:border-brand-primary/40">
+  const content = (
+    <>
       <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-md bg-brand-primary/10 text-brand-primary">
         <Icon aria-hidden className="h-5 w-5" />
       </span>
       <span className="min-w-0 flex-1">
         <span className="block text-sm font-semibold text-ink-primary">{section.title}</span>
         <span className="mt-1 block text-sm leading-5 text-ink-secondary">{section.description}</span>
+        {!section.href ? <span className="mt-2 block text-xs font-semibold text-ink-muted">Editable MVP pendiente</span> : null}
       </span>
       <ChevronRight aria-hidden className="mt-1 h-4 w-4 text-ink-muted transition group-hover:translate-x-0.5 group-hover:text-brand-primary" />
-    </a>
+    </>
+  );
+
+  if (section.href) {
+    return (
+      <Link href={section.href} className="group flex gap-3 rounded-lg border border-line-subtle bg-surface-base p-4 shadow-soft transition hover:border-brand-primary/40">
+        {content}
+      </Link>
+    );
+  }
+
+  return (
+    <div className="flex gap-3 rounded-lg border border-line-subtle bg-surface-base p-4 opacity-85 shadow-soft">
+      {content}
+    </div>
   );
 }
 
@@ -306,6 +321,9 @@ function SecurityPanel() {
 function IntegrationsPanel() {
   return (
     <SettingsCard id="integrations" eyebrow="Integrations" icon={PlugZap} title="Conexiones del workspace">
+      <p className="mb-4 text-sm leading-6 text-ink-secondary">
+        Estado auditado de integraciones visibles. La configuracion editable debe conectarse en PRs pequenos por proveedor.
+      </p>
       <div className="grid gap-3 sm:grid-cols-2">
         {integrations.map((integration) => {
           const Icon = integration.icon;
@@ -332,6 +350,9 @@ function IntegrationsPanel() {
 function TeamPanel() {
   return (
     <SettingsCard id="team" eyebrow="Team / workspace" icon={UsersRound} title="Equipo y permisos">
+      <p className="mb-4 text-sm leading-6 text-ink-secondary">
+        Estructura MVP propuesta: owner, editor de cursos y soporte. La gestion real de roles queda pendiente de persistencia.
+      </p>
       <div className="space-y-3">
         {teamMembers.map((member) => (
           <div key={member.name} className="flex items-center justify-between gap-3 rounded-md border border-line-subtle bg-surface-raised p-3">

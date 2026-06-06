@@ -5,7 +5,6 @@ import {
   BadgeCheck,
   BookOpen,
   Boxes,
-  BrainCircuit,
   CheckCircle2,
   ChevronRight,
   Circle,
@@ -19,7 +18,6 @@ import {
   Rocket,
   ShieldCheck,
   Sparkles,
-  WandSparkles
 } from "lucide-react";
 
 import { PageHeader } from "@/components/layout/page-header";
@@ -95,7 +93,7 @@ const setupCards: SetupCard[] = [
   }
 ];
 
-const aiSuggestions = [
+const nextActions = [
   "Publica un curso starter con 3 modulos para validar demanda antes de crear toda la academia.",
   "Activa una oferta manual LATAM simple: transferencia + DIMO + instrucciones claras.",
   "Usa el storefront como primera prueba comercial y revisa conversion desde el dashboard."
@@ -119,21 +117,21 @@ export default async function OnboardingPage() {
       <PageHeader
         eyebrow="Onboarding"
         title={`Hola, ${firstName}. Vamos a activar tu academia.`}
-        description="Un flujo guiado para convertir una instalacion nueva en una plataforma lista para vender, ensenar y operar."
+        description="Checklist operativo para dejar listo el MVP: curso, producto, pago, acceso y primera validacion de alumno."
         actions={
           <>
             <Link
               href={isAdmin ? "/admin/cursos" : "/mis-productos"}
               className="inline-flex min-h-10 items-center gap-2 rounded-md bg-brand-primary px-4 py-2 text-sm font-semibold text-white shadow-soft"
             >
-              {isAdmin ? "Empezar setup" : "Ver mis productos"}
+              {isAdmin ? "Abrir checklist" : "Ver mi aprendizaje"}
               <ArrowRight aria-hidden className="h-4 w-4" />
             </Link>
             <Link
               href={isAdmin ? "/admin" : "/mis-productos"}
               className="inline-flex min-h-10 items-center gap-2 rounded-md border border-line-subtle bg-surface-base px-4 py-2 text-sm font-semibold text-ink-secondary shadow-soft"
             >
-              Ir al dashboard
+              Dashboard
             </Link>
           </>
         }
@@ -143,20 +141,20 @@ export default async function OnboardingPage() {
         <div className="grid gap-px bg-white/10 xl:grid-cols-[1.2fr_0.8fr]">
           <div className="bg-[radial-gradient(circle_at_18%_12%,rgba(20,184,166,0.26),transparent_30%),radial-gradient(circle_at_90%_18%,rgba(59,130,246,0.22),transparent_28%),linear-gradient(145deg,#020617,#0f172a)] p-5 sm:p-7">
             <span className="inline-flex items-center gap-2 rounded-md border border-white/10 bg-white/[0.06] px-3 py-1.5 text-xs font-semibold text-brand-accent">
-              <WandSparkles aria-hidden className="h-4 w-4" />
-              First run experience
+              <BadgeCheck aria-hidden className="h-4 w-4" />
+              Operational setup
             </span>
             <h2 className="mt-6 max-w-3xl text-3xl font-semibold leading-tight sm:text-5xl">
-              Tu primer wow moment: una academia lista para tomar forma en minutos.
+              Configura las piezas minimas para operar sin depender de datos demo.
             </h2>
             <p className="mt-5 max-w-2xl text-sm leading-7 text-slate-300">
-              El sistema te guia por las piezas importantes: curso, producto, checkout, storefront y primera experiencia del alumno.
+              Usa esta pantalla para revisar el estado operativo del workspace y saltar a las secciones que ya existen.
             </p>
 
             <div className="mt-8 grid gap-3 md:grid-cols-3">
               <DarkSignal icon={ShieldCheck} label="Produccion" value="Lista" detail="Auth y acceso protegidos" />
-              <DarkSignal icon={PlayCircle} label="Tiempo estimado" value="12 min" detail="Setup guiado mock" />
-              <DarkSignal icon={BadgeCheck} label="Activacion" value={`${setupProgress}%`} detail="Progreso visual" />
+              <DarkSignal icon={PlayCircle} label="Setup" value="Manual" detail="Checklist de operacion" />
+              <DarkSignal icon={BadgeCheck} label="Activacion" value={`${setupProgress}%`} detail="Estimacion visual" />
             </div>
           </div>
 
@@ -190,7 +188,7 @@ export default async function OnboardingPage() {
               </div>
               <span className="inline-flex w-fit items-center gap-2 rounded-md bg-surface-muted px-3 py-1.5 text-xs font-semibold text-ink-secondary">
                 <Sparkles aria-hidden className="h-4 w-4 text-brand-primary" />
-                Guiado por IA
+                Checklist MVP
               </span>
             </div>
             <div className="mt-5 grid gap-4 lg:grid-cols-3">
@@ -207,7 +205,7 @@ export default async function OnboardingPage() {
         </div>
 
         <aside className="space-y-6">
-          <AiSetupSuggestions />
+          <RecommendedActions />
           <WelcomeFlowCard isAdmin={isAdmin} />
           <EmptyStatePreview />
         </aside>
@@ -300,20 +298,20 @@ function FirstCoursePreview() {
   );
 }
 
-function AiSetupSuggestions() {
+function RecommendedActions() {
   return (
     <section className="rounded-lg border border-line-subtle bg-surface-base p-5 shadow-float">
       <div className="flex items-center gap-3">
         <span className="flex h-10 w-10 items-center justify-center rounded-md bg-brand-accent/10 text-brand-accent">
-          <BrainCircuit aria-hidden className="h-5 w-5" />
+          <Lightbulb aria-hidden className="h-5 w-5" />
         </span>
         <div>
-          <p className="text-xs font-semibold uppercase tracking-normal text-brand-primary">AI setup suggestions</p>
-          <h2 className="text-lg font-semibold text-ink-primary">Siguiente mejor paso</h2>
+          <p className="text-xs font-semibold uppercase tracking-normal text-brand-primary">Next recommended action</p>
+          <h2 className="text-lg font-semibold text-ink-primary">Acciones operativas sugeridas</h2>
         </div>
       </div>
       <div className="mt-5 space-y-3">
-        {aiSuggestions.map((suggestion) => (
+        {nextActions.map((suggestion) => (
           <p key={suggestion} className="rounded-md border border-line-subtle bg-surface-raised p-3 text-sm leading-6 text-ink-secondary">
             {suggestion}
           </p>

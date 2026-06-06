@@ -9,7 +9,8 @@ import {
   GraduationCap,
   PlayCircle,
   RotateCcw,
-  Sparkles
+  Sparkles,
+  UserRound
 } from "lucide-react";
 
 import { PageHeader } from "@/components/layout/page-header";
@@ -69,6 +70,27 @@ export default async function MyProductsPage() {
         title="Mi aprendizaje"
         description={`Hola${auth.profile.fullName ? `, ${auth.profile.fullName}` : ""}. Tu espacio para continuar cursos, revisar progreso y mantener tus accesos al dia.`}
       />
+
+      <section className="rounded-lg border border-line-subtle bg-surface-base p-5 shadow-soft">
+        <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+          <div className="flex gap-3">
+            <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-md bg-brand-primary/10 text-brand-primary">
+              <UserRound aria-hidden className="h-5 w-5" />
+            </span>
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-normal text-brand-primary">Perfil</p>
+              <h2 className="mt-1 text-lg font-semibold text-ink-primary">Datos del alumno</h2>
+              <p className="mt-1 text-sm leading-6 text-ink-secondary">
+                Edicion de perfil pendiente de conectar a persistencia. Los campos actuales son solo lectura.
+              </p>
+            </div>
+          </div>
+          <div className="grid gap-3 sm:grid-cols-2 lg:w-[34rem]">
+            <ReadOnlyField label="Nombre" value={auth.profile.fullName ?? "Sin nombre"} />
+            <ReadOnlyField label="Email" value={auth.profile.email} />
+          </div>
+        </div>
+      </section>
 
       <section className="grid gap-4 lg:grid-cols-[1.45fr_0.9fr]">
         <ContinueLearningCard item={continueProduct} />
@@ -331,6 +353,20 @@ function StudentMetric({ icon: Icon, label, value, detail }: { icon: typeof Book
       </div>
       <p className="mt-4 text-sm text-ink-secondary">{detail}</p>
     </article>
+  );
+}
+
+function ReadOnlyField({ label, value }: { label: string; value: string }) {
+  return (
+    <label className="block space-y-2 text-sm font-semibold text-ink-primary">
+      {label}
+      <input
+        value={value}
+        disabled
+        readOnly
+        className="min-h-10 w-full rounded-md border border-line-subtle bg-surface-muted px-3 py-2 text-sm font-medium text-ink-secondary"
+      />
+    </label>
   );
 }
 
