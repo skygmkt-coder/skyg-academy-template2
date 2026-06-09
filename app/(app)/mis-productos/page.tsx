@@ -19,6 +19,7 @@ import { listPaymentsForStudent } from "@/lib/engines/commerce/service";
 import type { StudentPayment } from "@/lib/engines/commerce/types";
 import { listStudentProducts } from "@/lib/engines/learning/service";
 import type { StudentProductAccess } from "@/lib/engines/learning/types";
+import { DATA_FETCH_TIMEOUT_MS, safeData } from "@/src/services/performance";
 
 function continueHref(item: StudentProductAccess): string {
   return item.progress.lastViewedLessonSlug
@@ -48,8 +49,18 @@ function paymentStatusClass(status: StudentPayment["status"]): string {
 export default async function MyProductsPage() {
   const auth = await requireUser();
   const [products, payments] = await Promise.all([
-    listStudentProducts(auth),
-    listPaymentsForStudent(auth.user.id)
+    safeData({
+      label: "student products",
+      load: () => listStudentProducts(auth),
+      fallback: [],
+      timeoutMs: DATA_FETCH_TIMEOUT_MS.DASHBOARD_QUERY
+    }),
+    safeData({
+      label: "student payments",
+      load: () => listPaymentsForStudent(auth.user.id),
+      fallback: [],
+      timeoutMs: DATA_FETCH_TIMEOUT_MS.DASHBOARD_QUERY
+    })
   ]);
 
   const activeProducts = products.filter(({ progress }) => progress.progressPercentage < 100);

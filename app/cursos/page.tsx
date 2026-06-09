@@ -17,6 +17,7 @@ import { CourseCard } from "@/components/catalog/course-card";
 import { LandingMobileMenu } from "@/components/landing/landing-mobile-menu";
 import { getActiveBrandSettings } from "@/lib/engines/branding/service";
 import { listPublicStorefrontCourses, type PublicCourseSummary } from "@/lib/courses/storefront";
+import { DATA_FETCH_TIMEOUT_MS, safeData } from "@/src/services/performance";
 
 export const dynamic = "force-dynamic";
 
@@ -59,18 +60,21 @@ async function listPublicStorefrontCoursesSafely(): Promise<{
   courses: PublicCourseSummary[];
   hasCatalogError: boolean;
 }> {
-  try {
-    return {
+  return safeData<{
+    courses: PublicCourseSummary[];
+    hasCatalogError: boolean;
+  }>({
+    label: "public storefront courses",
+    load: async () => ({
       courses: await listPublicStorefrontCourses(),
       hasCatalogError: false
-    };
-  } catch (error) {
-    console.error("Unable to load public storefront courses.", error);
-    return {
+    }),
+    fallback: {
       courses: [],
       hasCatalogError: true
-    };
-  }
+    },
+    timeoutMs: DATA_FETCH_TIMEOUT_MS.PUBLIC_CATALOG
+  });
 }
 
 export default async function PublicCoursesPage() {
