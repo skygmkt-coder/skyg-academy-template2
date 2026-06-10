@@ -1,11 +1,13 @@
+import { cache } from "react";
+
 import { brandSettingsSchema } from "@/lib/engines/branding/validation";
 import { getBrandSettings as getBrandSettingsFromRepository } from "@/lib/engines/branding/repository";
 import type { BrandSettings } from "@/lib/engines/branding/types";
 
-export async function getActiveBrandSettings(): Promise<BrandSettings> {
+export const getActiveBrandSettings = cache(async (): Promise<BrandSettings> => {
   const settings = await getBrandSettingsFromRepository();
   return brandSettingsSchema.parse(settings);
-}
+});
 
 export function hexToRgbTriplet(hex: string): string {
   const normalized = hex.replace("#", "");

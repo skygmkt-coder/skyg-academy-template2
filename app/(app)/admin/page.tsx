@@ -22,6 +22,7 @@ import { listStudentProfiles } from "@/lib/engines/auth/repository";
 import { formatMxn } from "@/lib/engines/catalog/helpers";
 import { listAdminProducts } from "@/lib/engines/catalog/service";
 import { listPaymentsForAdmin } from "@/lib/engines/commerce/service";
+import { DATA_FETCH_TIMEOUT_MS, safeData } from "@/src/services/performance";
 
 type DashboardActivity = {
   id: string;
@@ -59,10 +60,30 @@ function clampPercent(value: number): number {
 export default async function AdminPage() {
   const auth = await requireAdmin();
   const [courses, products, payments, students] = await Promise.all([
-    listOwnedCourseSummaries(auth.user.id),
-    listAdminProducts(),
-    listPaymentsForAdmin(),
-    listStudentProfiles()
+    safeData({
+      label: "admin course summaries",
+      load: () => listOwnedCourseSummaries(auth.user.id),
+      fallback: [],
+      timeoutMs: DATA_FETCH_TIMEOUT_MS.DASHBOARD_QUERY
+    }),
+    safeData({
+      label: "admin products",
+      load: listAdminProducts,
+      fallback: [],
+      timeoutMs: DATA_FETCH_TIMEOUT_MS.DASHBOARD_QUERY
+    }),
+    safeData({
+      label: "admin payments",
+      load: () => listPaymentsForAdmin(),
+      fallback: [],
+      timeoutMs: DATA_FETCH_TIMEOUT_MS.DASHBOARD_QUERY
+    }),
+    safeData({
+      label: "student profiles",
+      load: listStudentProfiles,
+      fallback: [],
+      timeoutMs: DATA_FETCH_TIMEOUT_MS.DASHBOARD_QUERY
+    })
   ]);
 
   const publishedCourses = courses.filter((course) => course.isPublished);

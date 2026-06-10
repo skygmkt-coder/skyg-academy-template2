@@ -19,13 +19,19 @@ import type {
   ResourceFormInput
 } from "@/lib/engines/catalog/validation";
 import type { Product, ProductWithLessons } from "@/lib/engines/catalog/types";
+import { DATA_FETCH_TIMEOUT_MS, safeData } from "@/src/services/performance";
 
 export async function listAdminProducts(): Promise<Product[]> {
   return listProductsForAdmin();
 }
 
 export async function listPublicProducts(): Promise<Product[]> {
-  return listPublishedProducts();
+  return safeData({
+    label: "public products",
+    load: listPublishedProducts,
+    fallback: [],
+    timeoutMs: DATA_FETCH_TIMEOUT_MS.PUBLIC_CATALOG
+  });
 }
 
 export async function getAdminProductEditor(productId: string): Promise<ProductWithLessons | null> {
